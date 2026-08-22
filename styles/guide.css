@@ -1,0 +1,432 @@
+@layer guide {
+/*
+ * First-run guide: a native modal dialog. Enter is 200 ms, exit 150 ms, and the
+ * mobile layout re-anchors the same dialog as a bottom sheet.
+ */
+.guide {
+  width: min(100% - 2rem, 34rem);
+  max-height: calc(100dvh - 2rem);
+  padding: var(--space-5);
+  border: 1px solid var(--shell-border);
+  border-radius: 12px;
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  opacity: 0;
+  transform: scale(0.97) translateY(4px);
+  transform-origin: center;
+  transition:
+    opacity var(--motion-exit) var(--ease-out),
+    transform var(--motion-exit) var(--ease-out),
+    overlay var(--motion-exit) allow-discrete,
+    display var(--motion-exit) allow-discrete;
+}
+
+.guide[open] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--motion-enter) var(--ease-out),
+    transform var(--motion-enter) var(--ease-out),
+    overlay var(--motion-enter) allow-discrete,
+    display var(--motion-enter) allow-discrete;
+}
+
+@starting-style {
+  .guide[open] {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+}
+
+.guide::backdrop {
+  background: oklch(0 0 0 / 0);
+  backdrop-filter: blur(0);
+  transition:
+    background-color var(--motion-exit) var(--ease-out),
+    backdrop-filter var(--motion-exit) var(--ease-out),
+    overlay var(--motion-exit) allow-discrete,
+    display var(--motion-exit) allow-discrete;
+}
+
+.guide[open]::backdrop {
+  background: oklch(0 0 0 / 0.6);
+  backdrop-filter: blur(8px);
+  transition:
+    background-color var(--motion-enter) var(--ease-out),
+    backdrop-filter var(--motion-enter) var(--ease-out),
+    overlay var(--motion-enter) allow-discrete,
+    display var(--motion-enter) allow-discrete;
+}
+
+@starting-style {
+  .guide[open]::backdrop {
+    background: oklch(0 0 0 / 0);
+    backdrop-filter: blur(0);
+  }
+}
+
+.guide-head {
+  margin-bottom: var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.guide-dots {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.guide-dots span {
+  width: 6px;
+  height: 6px;
+  display: block;
+  border-radius: 999px;
+  background: var(--shell-border);
+  transition: width var(--motion-enter) var(--ease-out), background-color var(--motion-enter) var(--ease-out);
+}
+
+.guide-dots span[data-state="complete"] {
+  background: var(--shell-accent-deep);
+}
+
+.guide-dots span[data-state="active"] {
+  width: 18px;
+  background: var(--shell-accent);
+}
+
+.guide-skip {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--shell-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: color var(--motion-ui) var(--ease-out), background-color var(--motion-ui) var(--ease-out);
+}
+
+/* Only the incoming step animates; the outgoing one is simply hidden. */
+.guide-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  transition:
+    opacity var(--motion-enter) var(--ease-out),
+    transform var(--motion-enter) var(--ease-out),
+    display var(--motion-enter) allow-discrete;
+}
+
+@starting-style {
+  .guide[data-direction="forward"] .guide-step {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+
+  .guide[data-direction="back"] .guide-step {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+
+.guide-step h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.guide-caption {
+  margin: 0;
+  color: var(--shell-muted);
+  font-size: 0.8125rem;
+}
+
+.guide-step[data-guide-step="1"] .guide-caption {
+  text-align: center;
+}
+
+.guide-footer {
+  margin-top: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.guide-footer.spread {
+  justify-content: space-between;
+}
+
+.guide-quiet,
+.guide-next {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  transition:
+    color var(--motion-ui) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out),
+    border-color var(--motion-ui) var(--ease-out),
+    transform var(--motion-press) var(--ease-out);
+}
+
+.guide-quiet {
+  border: 1px solid var(--shell-border);
+  background: transparent;
+  color: var(--shell-muted);
+}
+
+.guide-next {
+  border: 1px solid var(--shell-accent);
+  background: var(--shell-accent);
+  color: oklch(0.13 0.025 188);
+}
+
+.guide-quiet:active,
+.guide-next:active {
+  transform: scale(0.97);
+}
+
+.first-signal {
+  width: 100%;
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  border: 1px solid var(--shell-border);
+  border-radius: var(--radius-lg);
+  background: var(--shell-bg);
+  color: var(--shell-text);
+  transition:
+    border-color var(--motion-ui) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out),
+    transform var(--motion-press) var(--ease-out);
+}
+
+.first-signal:active {
+  transform: scale(0.985);
+}
+
+.first-signal-pattern {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.first-signal-pattern i {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+  background: var(--theme-accent);
+}
+
+.first-signal-pattern i.dash {
+  width: 3.75rem;
+}
+
+.first-signal > strong {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.first-signal > small {
+  color: var(--shell-muted);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+}
+
+/*
+ * Find your rhythm: three cards, each auditionable before it is chosen. The card
+ * selects and the quiet button below it plays, so neither action can be hit by
+ * accident while reaching for the other.
+ */
+.rhythm-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.rhythm-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--shell-border);
+  border-radius: var(--radius-md);
+  background: var(--shell-bg);
+  transition:
+    border-color var(--motion-ui) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out);
+}
+
+.rhythm-card:has([aria-pressed="true"]) {
+  border-color: var(--shell-accent);
+  background: var(--shell-surface-raised);
+}
+
+.rhythm-select {
+  min-height: 3.75rem;
+  padding: var(--space-3) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  border: 0;
+  background: transparent;
+  color: var(--shell-text);
+  transition: transform var(--motion-press) var(--ease-out), color var(--motion-ui) var(--ease-out);
+}
+
+.rhythm-select:active {
+  transform: scale(0.97);
+}
+
+.rhythm-select strong {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.rhythm-select small {
+  color: var(--shell-muted);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 0.8125rem;
+}
+
+.rhythm-card:has([aria-pressed="true"]) .rhythm-select small {
+  color: var(--shell-accent);
+}
+
+.rhythm-hear {
+  min-height: 2.75rem;
+  padding: var(--space-2);
+  border: 0;
+  border-top: 1px solid var(--shell-border);
+  background: transparent;
+  color: var(--shell-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: color var(--motion-ui) var(--ease-out), background-color var(--motion-ui) var(--ease-out);
+}
+
+.rhythm-hear:active {
+  color: var(--shell-text);
+}
+
+.guide-themes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.guide-themes .preview-screen {
+  height: 5.5rem;
+}
+
+.guide-themes .preview-screen i {
+  font-size: 1.5rem;
+}
+
+.guide-themes .theme-preview strong {
+  font-size: 0.875rem;
+}
+
+/* Bottom sheet on handsets: same dialog, re-anchored. */
+@media (max-width: 39.9375rem) {
+  .guide {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - 3rem);
+    margin: 0;
+    padding: 1.25rem 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+    inset: auto 0 0;
+    border-radius: 16px 16px 0 0;
+    transform: translateY(16px);
+  }
+
+  .guide[open] {
+    transform: none;
+  }
+
+  @starting-style {
+    .guide[open] {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+  }
+
+  .guide-themes,
+  .rhythm-cards {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  /* Stacked: the card becomes one row, the audition button its right end. */
+  .rhythm-card {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .rhythm-select {
+    min-height: 3rem;
+    flex: 1;
+    flex-direction: row;
+    justify-content: space-between;
+    padding-inline: var(--space-4);
+  }
+
+  .rhythm-hear {
+    min-width: 5.5rem;
+    border-top: 0;
+    border-left: 1px solid var(--shell-border);
+  }
+
+  .guide-themes .theme-preview {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .guide-themes .preview-screen {
+    height: 4.5rem;
+  }
+
+  .first-signal {
+    padding: var(--space-5) var(--space-4) var(--space-4);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .guide-skip:hover {
+    background: var(--shell-surface-raised);
+    color: var(--shell-text);
+  }
+
+  .guide-quiet:hover {
+    border-color: var(--shell-muted);
+    color: var(--shell-text);
+  }
+
+  .guide-next:hover {
+    background: oklch(0.79 0.11 188);
+  }
+
+  .first-signal:hover {
+    border-color: var(--shell-accent-deep);
+    background: var(--shell-surface-raised);
+  }
+
+  .rhythm-card:hover {
+    border-color: var(--shell-accent-deep);
+  }
+
+  .rhythm-hear:hover {
+    background: var(--shell-surface-raised);
+    color: var(--shell-text);
+  }
+
+}
+}

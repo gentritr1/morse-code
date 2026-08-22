@@ -1,67 +1,73 @@
 @layer trainer {
+/* One shared theme crossfade for every surface that repaints on a theme switch. */
+.machine,
+.machine-header,
+.letters,
+.letters-list li,
+.answer-key,
+.primary-action,
+.secondary-action,
+.machine-footer,
+.intro-card,
+.practice-view,
+.send-view,
+.send-pad,
+.send-readout {
+  transition: var(--theme-crossfade);
+}
+
 .machine {
-  --machine-bg: oklch(0.14 0.008 60);
-  --machine-surface: oklch(0.18 0.012 60);
-  --machine-surface-strong: oklch(0.23 0.018 65);
-  --machine-text: oklch(0.88 0.13 72);
-  --machine-muted: oklch(0.69 0.095 72);
-  --machine-faint: oklch(0.50 0.06 72);
-  --machine-accent: oklch(0.84 0.14 72);
-  --machine-on-accent: oklch(0.14 0.008 60);
   width: 100%;
-  min-height: 45rem;
+  flex: 1;
+  min-height: 34rem;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  border-radius: var(--radius-md);
-  background: var(--machine-bg);
-  color: var(--machine-text);
+  border-radius: var(--theme-radius);
+  background: var(--theme-bg);
+  color: var(--theme-text);
   box-shadow: 0 10px 12px oklch(0 0 0 / 0.34);
-  font-family: "DM Mono", "Courier New", monospace;
-  transition: background-color 220ms var(--ease-out), color 220ms var(--ease-out);
+  font-family: var(--theme-font);
 }
 
 .teletext-bars {
   display: none;
-  height: 1rem;
+  height: 0.75rem;
 }
 
 .teletext-bars span {
   flex: 1;
 }
 
-.teletext-bars span:nth-child(1) { background: oklch(0.85 0.13 200); }
-.teletext-bars span:nth-child(2) { background: oklch(0.87 0.16 95); }
-.teletext-bars span:nth-child(3) { background: oklch(0.72 0.20 340); }
-.teletext-bars span:nth-child(4) { background: oklch(0.80 0.18 145); }
-
 .machine-header {
-  min-height: 5.5rem;
-  padding: var(--space-4) var(--space-5);
+  min-height: 4rem;
+  padding: var(--space-3) var(--space-5);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  border-bottom: 1px solid var(--machine-faint);
+  border-bottom: 1px solid var(--theme-faint);
 }
 
 .machine-identity {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
 }
 
 .machine-identity > :first-child {
-  color: var(--machine-accent);
+  color: var(--theme-accent);
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 .machine-identity > :last-child {
-  color: var(--machine-muted);
-  font-size: 0.875rem;
+  color: var(--theme-muted);
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
 }
 
+/* A scoreboard, not a set of tiles. */
 .session-stats {
   margin: 0;
   display: flex;
@@ -77,46 +83,114 @@
 }
 
 .session-stats dt {
-  color: var(--machine-muted);
-  font-size: 0.875rem;
+  color: var(--theme-muted);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .session-stats dd {
   margin: 0;
-  color: var(--machine-accent);
+  color: var(--theme-accent);
   font-size: 1rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.machine-content {
-  min-height: 36rem;
-  display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr);
-}
-
-.roster-panel {
-  padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  border-right: 1px solid var(--machine-faint);
-  background: color-mix(in oklch, var(--machine-bg) 88%, var(--machine-surface));
-}
-
-.roster-heading,
-.answer-heading,
-.lesson-meta,
-.sprint-copy {
+/*
+ * The session rail: five segments for the five parts of a session, named only
+ * where the learner currently is. Structure made visible, never a metric.
+ */
+.session-rail-row {
+  margin-top: 0.3rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  color: var(--machine-muted);
-  font-size: 0.875rem;
+  gap: var(--space-2);
 }
 
-.roster {
+.session-rail {
+  width: 4.5rem;
+  display: flex;
+  gap: 2px;
+}
+
+.session-rail i {
+  height: 3px;
+  flex: 1;
+  display: block;
+  background: var(--theme-faint);
+  transition:
+    background-color var(--motion-ui) var(--ease-out),
+    opacity var(--motion-ui) var(--ease-out);
+}
+
+.session-rail i[data-state="done"] {
+  background: var(--theme-accent);
+  opacity: 0.6;
+}
+
+.session-rail i[data-state="active"] {
+  background: var(--theme-accent);
+}
+
+/* A phase the session never needed: dimmed, not credited. */
+.session-rail i[data-state="skipped"] {
+  background: var(--theme-faint);
+  opacity: 0.5;
+}
+
+.session-phase {
+  color: var(--theme-muted);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.session-stats dd[data-pop="true"] {
+  animation: stat-pop var(--motion-pop) var(--ease-out);
+}
+
+@keyframes stat-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.machine-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr);
+}
+
+/* Letters drawer: the progress map. Same markup inline or as a sheet. */
+.letters {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-right: 1px solid var(--theme-faint);
+  background: color-mix(in oklch, var(--theme-bg) 88%, var(--theme-surface));
+}
+
+.letters-head {
+  display: flex;
+  flex-direction: column;
+}
+
+.letters-head strong {
+  color: var(--theme-accent);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.letters-head small {
+  color: var(--theme-muted);
+  font-size: 0.75rem;
+}
+
+.letters-list {
   margin: 0;
   padding: 0;
   display: flex;
@@ -125,162 +199,318 @@
   list-style: none;
 }
 
-.roster li {
-  min-height: 2.25rem;
+.letters-list li {
+  min-height: 2rem;
   padding: 0 var(--space-2);
   display: grid;
-  grid-template-columns: 1.25rem 1.5rem 1fr;
+  grid-template-columns: 1.25rem 3.5rem minmax(1.5rem, 1fr) 4.25rem 0.375rem;
   align-items: center;
   gap: var(--space-2);
   border-radius: var(--radius-sm);
-  color: var(--machine-muted);
-  font-size: 0.875rem;
-  transition: background-color 180ms var(--ease-out), color 180ms var(--ease-out);
+  color: var(--theme-muted);
 }
 
-.roster li::before {
-  content: "·";
-  color: var(--machine-faint);
+/*
+ * Retention reads as brightness, and brightness is continuous: a row burns at
+ * `0.55 + 0.45 x retention`, where retention is how much of the character is
+ * expected to still be there against the interval it was last scheduled for.
+ * The dot is the same fact for anyone who cannot judge a brightness step.
+ */
+.letters-list li strong,
+.letters-list li .recognition-track {
+  opacity: var(--row-brightness, 0.85);
 }
 
-.roster li.current {
-  background: var(--machine-surface-strong);
-  color: var(--machine-accent);
+.letters-list li[data-retention="locked"] strong,
+.letters-list li[data-retention="locked"] .recognition-track {
+  opacity: 1;
 }
 
-.roster li.current::before {
-  content: ">";
-  color: currentColor;
+.retention-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  display: block;
+  border-radius: 999px;
+  background: transparent;
+  transition: background-color var(--motion-ui) var(--ease-out);
 }
 
-.roster-pattern {
-  letter-spacing: 0.12em;
+.letters-list li[data-retention="stable"] .retention-dot {
+  background: var(--theme-accent);
 }
 
-.roster-footer {
+/* Overdue is the only state that gets the dim dot. */
+.letters-list li[data-retention="fading"] .retention-dot {
+  background: var(--theme-faint);
+}
+
+.letters-caption {
+  color: var(--theme-faint);
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.letters-list strong {
+  color: var(--theme-accent);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.letters-list li[data-locked="true"] strong {
+  color: var(--theme-faint);
+}
+
+.letter-pattern {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.letter-pattern[data-placeholder="true"] {
+  color: var(--theme-faint);
+}
+
+.letters-list small {
+  overflow: hidden;
+  color: var(--theme-muted);
+  font-size: 0.625rem;
+  letter-spacing: 0.02em;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.letters-list li[data-locked="true"] small {
+  color: var(--theme-faint);
+}
+
+.letters-list li.current {
+  background: var(--theme-surface-strong);
+  color: var(--theme-accent);
+}
+
+.recognition-track {
+  height: 0.25rem;
+  overflow: hidden;
+  background: color-mix(in oklch, var(--theme-faint) 70%, transparent);
+}
+
+.recognition-track span {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: var(--theme-accent);
+  transform: scaleX(var(--recognition, 0));
+  transform-origin: left center;
+  transition: transform var(--motion-ui) var(--ease-out);
+}
+
+.letters-foot {
   margin-top: auto;
-  padding-top: var(--space-4);
+  padding-top: var(--space-3);
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  border-top: 1px solid var(--machine-faint);
-  color: var(--machine-muted);
-  font-size: 0.875rem;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-top: 1px solid var(--theme-faint);
+  color: var(--theme-muted);
+  font-size: 0.8125rem;
 }
 
-.roster-footer strong {
-  color: var(--machine-text);
-  font-weight: 500;
+.letters-foot strong {
+  color: var(--theme-text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
+/*
+ * One vertically centred group: status, marks, decode, actions, keys. The stage
+ * used to stretch the practice view to fill the column, which pushed the answer
+ * keys to the bottom edge and left a dead band in the middle.
+ */
+/*
+ * Two rows, not a column: the stage block (practice view, Send, or one of the
+ * two moment cards) shares one grid cell, and the answer deck sits under it.
+ * A card enters while the view it replaces is still finishing its exit — in a
+ * flex column both would occupy their own line for those 180 ms and grow the
+ * machine past the viewport, which is what made the session-end and intro
+ * states measure taller than the round they replace. Sharing a cell lets them
+ * cross-fade in place at a fixed height.
+ */
 .practice-stage {
+  --stage-gap: var(--space-5);
   min-width: 0;
-  padding: var(--space-5) var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+}
+
+.intro-card,
+.practice-view,
+.send-view {
+  grid-area: 1 / 1;
+}
+
+.answer-deck {
+  grid-area: 2 / 1;
+  margin-block-start: var(--stage-gap);
 }
 
 .sprint-panel {
-  position: absolute;
-  inset: 0 0 auto;
   width: 100%;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
 .sprint-copy {
-  color: var(--machine-accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--theme-accent);
   font-variant-numeric: tabular-nums;
 }
 
 .time-track {
-  height: 0.75rem;
+  height: 0.5rem;
   padding: 2px;
-  border: 1px solid var(--machine-faint);
-  background: var(--machine-surface);
+  border: 1px solid var(--theme-faint);
+  background: var(--theme-surface);
 }
 
 .time-track span {
   display: block;
   width: 100%;
   height: 100%;
-  background: var(--machine-accent);
+  background: var(--theme-accent);
   transform: scaleX(1);
   transform-origin: left;
   transition: transform 100ms linear;
 }
 
-.learn-view,
-.practice-view {
-  flex: 1;
-  min-height: 22rem;
+/*
+ * Stage views crossfade on a mode switch and on the two moment cards, and the
+ * exit is deliberately much shorter than the enter: they share a grid cell, so
+ * a symmetric fade would leave two readable blocks on top of each other.
+ */
+.intro-card,
+.practice-view,
+.send-view {
+  transition:
+    var(--theme-crossfade),
+    opacity var(--motion-stage) var(--ease-out),
+    transform var(--motion-stage) var(--ease-out),
+    display var(--motion-stage-exit) allow-discrete;
 }
 
-.learn-view {
+/*
+ * The exit has to be declared, not assumed: without an opacity on the hidden
+ * state the `display` transition only delays the element's disappearance, so
+ * the block being replaced stayed fully legible underneath the card that
+ * replaced it. It leaves faster than the incoming block arrives.
+ */
+.intro-card[hidden],
+.practice-view[hidden],
+.send-view[hidden] {
+  opacity: 0;
+  transform: translateY(4px);
+  transition-duration: var(--motion-stage-exit);
+}
+
+@starting-style {
+  .practice-view,
+  .send-view {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* The new-letter moment is rare, so it gets a slightly longer entrance. */
+.intro-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  text-align: center;
+  transition:
+    var(--theme-crossfade),
+    opacity var(--motion-intro) var(--ease-out),
+    transform var(--motion-intro) var(--ease-out),
+    display var(--motion-exit) allow-discrete;
 }
 
-.lesson-core {
-  flex: 1;
-  min-height: 9rem;
+@starting-style {
+  .intro-card {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* The end of a session is rare, so it gets the same treatment as a new letter. */
+.session-sentence {
+  max-width: 28ch;
+  margin: 0;
+  color: var(--theme-accent);
+  font-size: 1.75rem;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.intro-tag {
+  color: var(--theme-muted);
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.intro-core {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-7);
+  gap: var(--space-6);
 }
 
-.lesson-letter {
-  color: var(--machine-accent);
-  font-size: 8rem;
+.intro-letter {
+  color: var(--theme-accent);
+  font-size: 6rem;
   line-height: 0.85;
 }
 
-.lesson-signal,
-.signal-bars {
+.intro-signal {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
 }
 
-.lesson-signal span,
-.signal-bars span {
-  display: block;
-  width: 1.25rem;
-  height: 1.25rem;
-  background: var(--machine-accent);
-}
-
-.lesson-signal span.dash,
-.signal-bars span.dash {
-  width: 3.75rem;
-}
-
-.lesson-spoken {
-  width: fit-content;
+.intro-spoken {
   margin: 0;
-  color: var(--machine-accent);
+  color: var(--theme-accent);
   font-size: 1.125rem;
   letter-spacing: 0.1em;
 }
 
-.lesson-note {
-  max-width: 68ch;
+.intro-note {
+  max-width: 46ch;
   margin: 0;
-  color: var(--machine-text);
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--theme-text);
+  font-size: 0.9375rem;
+  line-height: 1.6;
   text-wrap: pretty;
 }
 
-.lesson-actions,
-.practice-actions {
+.intro-actions,
+.practice-actions,
+.send-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-3);
 }
 
@@ -288,33 +518,32 @@
 .secondary-action {
   min-height: 2.75rem;
   padding: var(--space-2) var(--space-4);
+  white-space: nowrap;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--machine-muted);
+  border: 1px solid var(--theme-muted);
   font-weight: 700;
-  transition: color 180ms var(--ease-out), background-color 180ms var(--ease-out), border-color 180ms var(--ease-out), transform 140ms var(--ease-out);
+  transition: var(--theme-crossfade), transform var(--motion-press) var(--ease-out);
 }
 
 .primary-action {
-  background: var(--machine-accent);
-  color: var(--machine-on-accent);
-  border-color: var(--machine-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+  border-color: var(--theme-accent);
 }
 
 .secondary-action {
   background: transparent;
-  color: var(--machine-text);
+  color: var(--theme-text);
 }
 
-.primary-action:hover,
 .primary-action:active {
-  background: color-mix(in oklch, var(--machine-accent) 86%, white);
+  background: color-mix(in oklch, var(--theme-accent) 86%, white);
 }
 
-.secondary-action:hover,
 .secondary-action:active {
-  background: var(--machine-surface-strong);
-  border-color: var(--machine-accent);
-  color: var(--machine-accent);
+  background: var(--theme-surface-strong);
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
 }
 
 .primary-action:active,
@@ -322,8 +551,32 @@
   transform: scale(0.97);
 }
 
-.practice-view {
+.text-action {
   position: relative;
+  min-height: 2.75rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--theme-accent);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.text-action::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: calc(50% - 0.75rem);
+  left: 0;
+  height: 1px;
+  background: var(--theme-accent);
+}
+
+.practice-view,
+.send-view {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -332,16 +585,73 @@
   text-align: center;
 }
 
-.machine[data-mode="sprint"] .practice-view {
-  padding-top: 4.5rem;
+.practice-view {
+  transition:
+    background-color var(--motion-reward-out) var(--ease-out),
+    color var(--motion-crossfade) var(--ease-out),
+    border-color var(--motion-crossfade) var(--ease-out),
+    opacity var(--motion-stage) var(--ease-out),
+    transform var(--motion-stage) var(--ease-out),
+    display var(--motion-stage) allow-discrete;
+}
+
+/* Answering is the reward moment: quick tint in, slow fade out. */
+.machine[data-feedback="correct"] .practice-view {
+  background-color: color-mix(in oklch, var(--theme-accent) 8%, transparent);
+}
+
+.machine[data-feedback="incorrect"] .practice-view {
+  background-color: color-mix(in oklch, var(--danger) 6%, transparent);
+}
+
+.machine[data-feedback="correct"] .practice-view,
+.machine[data-feedback="incorrect"] .practice-view {
+  transition-duration:
+    var(--motion-reward-in),
+    var(--motion-crossfade),
+    var(--motion-crossfade),
+    var(--motion-stage),
+    var(--motion-stage),
+    var(--motion-stage);
 }
 
 .status-line {
   min-height: 1.5rem;
   margin: 0;
-  color: var(--machine-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  color: var(--theme-muted);
   font-size: 1rem;
   letter-spacing: 0.06em;
+  text-wrap: balance;
+  transition: color var(--motion-ui) var(--ease-out);
+}
+
+.status-line[data-pop="true"] {
+  animation: result-pop var(--motion-result) var(--ease-out);
+}
+
+@keyframes result-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.best-tag {
+  padding: 0.125rem var(--space-2);
+  border: 1px solid var(--theme-accent);
+  border-radius: var(--radius-sm);
+  color: var(--theme-accent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
 }
 
 .machine[data-feedback="correct"] .status-line {
@@ -352,87 +662,424 @@
   color: oklch(0.78 0.17 28);
 }
 
+.status-line[data-outcome="strong"] {
+  color: var(--success);
+}
+
+.status-line[data-outcome="retry"] {
+  color: color-mix(in oklch, var(--danger) 72%, var(--theme-text));
+}
+
 .signal-button {
   width: min(100%, 40rem);
-  min-height: 9rem;
-  padding: var(--space-4);
+  min-height: 6rem;
+  padding: var(--space-3);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--machine-accent);
-  transition: background-color 180ms var(--ease-out), transform 140ms var(--ease-out);
-}
-
-.signal-button:hover {
-  background: var(--machine-surface);
+  color: var(--theme-accent);
+  transition: background-color var(--motion-ui) var(--ease-out), transform var(--motion-press) var(--ease-out);
 }
 
 .signal-button:active {
-  background: var(--machine-surface-strong);
+  background: var(--theme-surface-strong);
   transform: scale(0.985);
 }
 
 .signal-text {
+  min-height: 4.5rem;
   display: flex;
+  max-width: 100%;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
-  font-size: 5.75rem;
+  gap: var(--space-5);
+  font-size: 5rem;
   line-height: 0.9;
-  text-shadow: 0 0 1.25rem color-mix(in oklch, var(--machine-accent) 42%, transparent);
+  text-shadow: 0 0 1.25rem color-mix(in oklch, var(--theme-accent) 42%, transparent);
 }
 
+/* Playing marks: fast attack, slower release. */
 .symbol-char,
-.lesson-signal span,
-.signal-bars span {
-  opacity: 0.72;
-  transition: opacity 90ms linear;
+.intro-signal span,
+.signal-bars span,
+.first-signal-pattern i {
+  opacity: 0.55;
+  transition:
+    opacity var(--motion-mark-out) var(--ease-out),
+    transform var(--motion-mark-out) var(--ease-out),
+    background-color var(--motion-mark-out) var(--ease-out),
+    color var(--motion-mark-out) var(--ease-out),
+    box-shadow var(--motion-mark-out) var(--ease-out),
+    text-shadow var(--motion-mark-out) var(--ease-out),
+    width var(--motion-reveal) var(--ease-out),
+    height var(--motion-reveal) var(--ease-out);
+}
+
+.intro-signal span.is-playing,
+.signal-bars span.is-playing,
+.first-signal-pattern i.is-playing {
+  opacity: 1;
+  transform: scale(1.06);
+  box-shadow: 0 0 0.75rem color-mix(in oklch, var(--theme-accent) 55%, transparent);
 }
 
 .symbol-char.is-playing {
   opacity: 1;
+  transform: scale(1.06);
+  text-shadow: 0 0 1.5rem color-mix(in oklch, var(--theme-accent) 75%, transparent);
 }
 
-.lesson-signal span.is-playing,
-.signal-bars span.is-playing {
+.symbol-char.is-playing,
+.intro-signal span.is-playing,
+.signal-bars span.is-playing,
+.first-signal-pattern i.is-playing {
+  transition-duration: var(--motion-mark-in);
+  transition-timing-function: linear;
+}
+
+/*
+ * Learn by ear: while the learner is deciding, the marks are placeholders of
+ * the right size and count. They light up during playback and stay lit once the
+ * answer (or a hint) has landed.
+ */
+/* Revealed marks are static and fully lit; the dim state is only for deciding. */
+.machine[data-reveal="shown"] .signal-bars span,
+.machine[data-reveal="shown"] .symbol-char,
+.intro-signal span {
   opacity: 1;
+}
+
+.machine[data-reveal="hidden"] .signal-bars span {
+  opacity: 0.4;
+  background: var(--theme-faint);
+  box-shadow: none;
+}
+
+.machine[data-reveal="hidden"] .symbol-char {
+  opacity: 0.4;
+  color: var(--theme-faint);
+  text-shadow: none;
+}
+
+.machine[data-reveal="hidden"] .signal-bars span.is-playing {
+  opacity: 1;
+  background: var(--theme-accent);
+}
+
+.machine[data-reveal="hidden"] .symbol-char.is-playing {
+  opacity: 1;
+  color: var(--theme-accent);
+}
+
+/*
+ * Mark geometry is three tokens so a theme, a narrow viewport and a multi-letter
+ * round can each scale the same shape without fighting over specificity.
+ */
+.intro-signal span,
+.signal-bars span {
+  display: block;
+  width: var(--mark-w, 1.25rem);
+  height: var(--mark-h, 1.25rem);
+  background: var(--theme-accent);
+}
+
+.intro-signal span.dash,
+.signal-bars span.dash {
+  width: var(--mark-dash-w, 3.75rem);
+}
+
+/*
+ * Before the answer, nothing may encode the pattern. Every mark collapses to the
+ * same square, so the count still reads — the learner can see how many marks are
+ * coming — while the shape stays in the ear where it belongs. The real widths
+ * come back for the duration of playback and again once the round is settled.
+ */
+.signal-bars[data-revealed="false"] span,
+.signal-bars[data-revealed="false"] span.dash {
+  width: var(--mark-h, 1.25rem);
+}
+
+.signal-text[data-revealed="false"] .symbol-char {
+  width: var(--mark-h, 1.25rem);
+  height: var(--mark-h, 1.25rem);
+  display: inline-block;
+  background: var(--theme-faint);
+  color: transparent;
+  text-shadow: none;
+  overflow: hidden;
+}
+
+
+/*
+ * One group per character. The container's gap is the space BETWEEN characters,
+ * the group's own gap is the space between marks inside one — which is why a
+ * word reads as words and never wraps mid-letter.
+ */
+.mark-group {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--mark-gap, var(--space-3));
+}
+
+.mark-space {
+  width: var(--space-6);
+  flex: 0 0 auto;
 }
 
 .signal-bars {
   display: none;
-  min-height: 4rem;
+  min-height: 3.5rem;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+}
+
+/* A burst or a word carries more marks, so the marks themselves step down. */
+.signal-bars[data-group="true"] {
+  --mark-w: 0.875rem;
+  --mark-h: 0.875rem;
+  --mark-dash-w: 2.625rem;
+  --mark-gap: var(--space-2);
+  row-gap: var(--space-3);
+}
+
+.signal-text[data-group="true"] {
+  --mark-gap: var(--space-2);
+  min-height: 2.7rem;
+  font-size: 3rem;
+  row-gap: var(--space-2);
 }
 
 .replay-copy {
-  color: var(--machine-muted);
-  font-size: 0.875rem;
+  color: var(--theme-muted);
+  font-size: 0.8125rem;
 }
 
 .decode-line {
-  min-height: 5rem;
+  min-height: 3.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  color: var(--machine-muted);
+  color: var(--theme-muted);
 }
 
 .decode-line strong {
   min-width: 1.25ch;
-  color: var(--machine-text);
-  font-size: 4rem;
+  color: var(--theme-text);
+  font-size: 3.25rem;
   line-height: 1;
 }
 
+.typed-slot {
+  display: inline-block;
+  min-width: 1.25ch;
+}
+
+.typed-slot + .typed-slot {
+  margin-left: 0.15em;
+}
+
+.typed-slot.empty {
+  color: var(--theme-faint);
+}
+
+.typed-value {
+  transition: opacity var(--motion-mark-out) var(--ease-out), transform var(--motion-mark-out) var(--ease-out);
+}
+
+@starting-style {
+  .typed-value {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
 .cursor {
-  width: 0.75rem;
-  height: 3rem;
-  background: var(--machine-accent);
+  width: 0.625rem;
+  height: 2.5rem;
+  background: var(--theme-accent);
+  animation: cursor-blink 1.1s steps(1, end) infinite;
+}
+
+@keyframes cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Send: target, paddle, transmission. No headings — the shapes explain it. */
+.send-target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--theme-muted);
+}
+
+.send-target strong {
+  color: var(--theme-text);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.send-pad {
+  width: min(100%, 22rem);
+  min-height: 7rem;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  border: 1px solid var(--theme-accent);
+  border-radius: var(--radius-sm);
+  background: var(--theme-surface-strong);
+  color: var(--theme-accent);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: var(--theme-crossfade), transform var(--motion-press) var(--ease-out);
+}
+
+.send-pad span {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.send-pad small {
+  color: var(--theme-muted);
+  font-size: 0.6875rem;
+}
+
+.send-pad[data-pressing="true"] {
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+  transform: scale(0.99);
+}
+
+.send-pad[data-pressing="true"] small {
+  color: currentColor;
+}
+
+.send-readout {
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.send-mark {
+  width: 1.125rem;
+  height: 1.125rem;
+  display: block;
+  flex: 0 0 auto;
+  background: var(--theme-accent);
+  transition: background-color var(--motion-ui) var(--ease-out);
+}
+
+.send-mark.dash {
+  width: 3.375rem;
+}
+
+.send-mark.placeholder {
+  border: 1px dashed var(--theme-faint);
+  background: transparent;
+}
+
+.send-mark[data-match="true"] {
+  background: var(--theme-accent);
+}
+
+.send-mark[data-match="false"] {
+  background: var(--danger);
+}
+
+/*
+ * You against Ideal. The only comparison bars in the product: they appear after
+ * a check, say what is off in words, and never turn into a chart.
+ */
+.send-trace {
+  width: min(100%, 22rem);
+  max-height: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.trace-row {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(3rem, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+ * The trace and the word under it read as one block, so they sit in their own
+ * container with a hairline gap: `.send-trace` keeps its own 3.5rem ceiling,
+ * and Send does not pay a full stage gap for one line of copy.
+ */
+.send-feedback {
+  width: min(100%, 22rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Once the feedback block is showing, Send carries more rows than any other
+   stage; the stage rhythm tightens by one step rather than overflowing. */
+.machine:has(.send-trace:not([hidden])) .send-view {
+  gap: var(--space-4);
+}
+
+.trace-band {
+  color: var(--theme-muted);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+}
+
+.trace-label,
+.trace-note {
+  color: var(--theme-muted);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.trace-note {
+  color: var(--theme-accent);
+  text-align: right;
+}
+
+.trace-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trace-bars i {
+  width: calc(var(--scale, 0) * 100%);
+  height: 3px;
+  display: block;
+  transition: width var(--motion-ui) var(--ease-out);
+}
+
+.trace-you {
+  background: var(--theme-accent);
+}
+
+.trace-ideal {
+  background: var(--theme-faint);
 }
 
 .answer-deck {
@@ -441,29 +1088,26 @@
   gap: var(--space-3);
 }
 
+/* The grid grows with the alphabet the learner has earned. */
 .answer-grid {
-  display: grid;
-  grid-template-columns: repeat(10, minmax(2.75rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-2);
 }
 
 .answer-key {
-  min-width: 0;
+  width: 3.25rem;
   min-height: 3.25rem;
   padding: var(--space-2);
-  border: 1px solid var(--machine-faint);
+  border: 1px solid var(--theme-faint);
   border-radius: var(--radius-sm);
-  background: var(--machine-surface);
-  color: var(--machine-text);
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font-family: inherit;
   font-size: 1.125rem;
   font-weight: 700;
-  transition: color 160ms var(--ease-out), background-color 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 140ms var(--ease-out);
-}
-
-.answer-key:hover {
-  border-color: var(--machine-accent);
-  background: var(--machine-accent);
-  color: var(--machine-on-accent);
+  transition: var(--theme-crossfade), transform var(--motion-press) var(--ease-out);
 }
 
 .answer-key:active {
@@ -475,6 +1119,13 @@
   background: var(--success);
   border-color: var(--success);
   color: oklch(0.16 0.035 145);
+  animation: key-settle 220ms var(--ease-out);
+}
+
+@keyframes key-settle {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.04); }
+  100% { transform: scale(1); }
 }
 
 .answer-key.was-incorrect {
@@ -484,22 +1135,64 @@
 }
 
 .machine-footer {
-  min-height: 3rem;
+  min-height: 2.75rem;
   padding: var(--space-2) var(--space-5);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  border-top: 1px solid var(--machine-faint);
-  color: var(--machine-muted);
-  font-size: 0.875rem;
+  border-top: 1px solid var(--theme-faint);
+  color: var(--theme-muted);
+  font-size: 0.8125rem;
 }
 
-.machine-footer > :first-child,
-.machine-footer > :last-child {
-  color: var(--machine-accent);
+#footerMode,
+#footerResult {
+  color: var(--theme-accent);
   font-weight: 700;
 }
 
-/* Amber terminal */
+.letters-toggle {
+  display: none;
+  min-height: 2.75rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--theme-faint);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--theme-accent);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  transition: var(--theme-crossfade), transform var(--motion-press) var(--ease-out);
+}
+
+.letters-toggle:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .primary-action:hover {
+    background: color-mix(in oklch, var(--theme-accent) 86%, white);
+  }
+
+  .secondary-action:hover {
+    background: var(--theme-surface-strong);
+    border-color: var(--theme-accent);
+    color: var(--theme-accent);
+  }
+
+  .signal-button:hover {
+    background: var(--theme-surface);
+  }
+
+  .answer-key:hover {
+    border-color: var(--theme-accent);
+    background: var(--theme-accent);
+    color: var(--theme-on-accent);
+  }
+
+  .letters-toggle:hover {
+    background: var(--theme-surface);
+  }
+}
 }

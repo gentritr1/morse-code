@@ -1,254 +1,358 @@
 @layer themes {
-.machine[data-theme="terminal"] .machine-header {
+/*
+ * Single source of truth for the three machine palettes.
+ * `body[data-theme]` switches every themed surface at once; `[data-theme-tokens]`
+ * applies one palette locally, which is how the guide and the settings panel can
+ * preview all three machines at the same time.
+ */
+:root,
+body[data-theme="terminal"],
+[data-theme-tokens="terminal"] {
+  --theme-bg: oklch(0.14 0.008 60);
+  --theme-surface: oklch(0.18 0.012 60);
+  --theme-surface-strong: oklch(0.23 0.018 65);
+  --theme-text: oklch(0.88 0.13 72);
+  --theme-muted: oklch(0.69 0.095 72);
+  --theme-faint: oklch(0.50 0.06 72);
+  --theme-accent: oklch(0.84 0.14 72);
+  --theme-on-accent: oklch(0.14 0.008 60);
+  --theme-font: "DM Mono", "Courier New", monospace;
+  --theme-radius: 8px;
+}
+
+body[data-theme="teletext"],
+[data-theme-tokens="teletext"] {
+  --theme-bg: oklch(0.22 0.09 265);
+  --theme-surface: oklch(0.28 0.10 265);
+  --theme-surface-strong: oklch(0.34 0.11 265);
+  --theme-text: oklch(0.97 0.01 250);
+  --theme-muted: oklch(0.86 0.13 200);
+  --theme-faint: oklch(0.39 0.12 265);
+  --theme-accent: oklch(0.87 0.16 95);
+  --theme-on-accent: oklch(0.20 0.06 95);
+  --theme-font: "VT323", "DM Mono", monospace;
+  --theme-radius: 4px;
+  --tt-cyan: oklch(0.85 0.13 200);
+  --tt-yellow: oklch(0.87 0.16 95);
+  --tt-magenta: oklch(0.72 0.20 340);
+  --tt-green: oklch(0.80 0.18 145);
+}
+
+body[data-theme="pocket"],
+[data-theme-tokens="pocket"] {
+  --theme-bg: oklch(0.31 0.009 250);
+  --theme-surface: oklch(0.39 0.010 250);
+  --theme-surface-strong: oklch(0.47 0.012 250);
+  --theme-text: oklch(0.90 0.006 250);
+  --theme-muted: oklch(0.72 0.008 250);
+  --theme-faint: oklch(0.22 0.008 250);
+  --theme-accent: oklch(0.83 0.045 145);
+  --theme-on-accent: oklch(0.28 0.04 150);
+  --theme-font: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --theme-radius: 12px;
+  --lcd-bg: oklch(0.83 0.045 145);
+  --lcd-ink: oklch(0.30 0.04 150);
+}
+
+/* Amber terminal */
+body[data-theme="terminal"] .machine-header {
   border-bottom-style: dashed;
 }
 
-.machine[data-theme="terminal"] .machine-identity > :first-child::before {
+body[data-theme="terminal"] .machine-identity > :first-child::before {
   content: "> ";
 }
 
-.machine[data-theme="terminal"] .signal-button,
-.machine[data-theme="terminal"] .primary-action,
-.machine[data-theme="terminal"] .secondary-action,
-.machine[data-theme="terminal"] .answer-key {
-  font-family: "DM Mono", "Courier New", monospace;
-}
-
-.machine[data-theme="terminal"] .primary-action {
+body[data-theme="terminal"] .primary-action {
   background: transparent;
-  color: var(--machine-accent);
+  color: var(--theme-accent);
 }
 
-.machine[data-theme="terminal"] .primary-action:hover,
-.machine[data-theme="terminal"] .primary-action:active {
-  background: var(--machine-accent);
-  color: var(--machine-on-accent);
+body[data-theme="terminal"] .primary-action:active {
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
 }
 
 /* Broadcast teletext */
-.machine[data-theme="teletext"] {
-  --machine-bg: oklch(0.22 0.09 265);
-  --machine-surface: oklch(0.28 0.10 265);
-  --machine-surface-strong: oklch(0.34 0.11 265);
-  --machine-text: oklch(0.97 0.01 250);
-  --machine-muted: oklch(0.86 0.13 200);
-  --machine-faint: oklch(0.39 0.12 265);
-  --machine-accent: oklch(0.87 0.16 95);
-  --machine-on-accent: oklch(0.20 0.06 95);
-  border-radius: var(--radius-sm);
-  font-family: "VT323", "DM Mono", monospace;
-}
-
-.machine[data-theme="teletext"] .teletext-bars {
+body[data-theme="teletext"] .teletext-bars {
   display: flex;
 }
 
-.machine[data-theme="teletext"] .machine-header {
-  min-height: 5rem;
+.teletext-bars span:nth-child(1) { background: var(--tt-cyan); }
+.teletext-bars span:nth-child(2) { background: var(--tt-yellow); }
+.teletext-bars span:nth-child(3) { background: var(--tt-magenta); }
+.teletext-bars span:nth-child(4) { background: var(--tt-green); }
+
+body[data-theme="teletext"] .machine-header {
   border-bottom: 0;
 }
 
-.machine[data-theme="teletext"] .machine-identity > :first-child {
-  font-size: 2rem;
+body[data-theme="teletext"] .machine-identity > :first-child {
+  font-size: 1.75rem;
   letter-spacing: 0.05em;
 }
 
-.machine[data-theme="teletext"] .machine-identity > :last-child,
-.machine[data-theme="teletext"] .session-stats dt,
-.machine[data-theme="teletext"] .session-stats dd,
-.machine[data-theme="teletext"] .roster-heading,
-.machine[data-theme="teletext"] .answer-heading,
-.machine[data-theme="teletext"] .lesson-meta,
-.machine[data-theme="teletext"] .sprint-copy,
-.machine[data-theme="teletext"] .machine-footer,
-.machine[data-theme="teletext"] .replay-copy,
-.machine[data-theme="teletext"] .status-line {
-  font-size: 1.25rem;
+body[data-theme="teletext"] .machine-identity > :last-child,
+body[data-theme="teletext"] .session-stats dt,
+body[data-theme="teletext"] .session-stats dd,
+body[data-theme="teletext"] .letters-head strong,
+body[data-theme="teletext"] .letters-head small,
+body[data-theme="teletext"] .letters-foot,
+body[data-theme="teletext"] .sprint-copy,
+body[data-theme="teletext"] .machine-footer,
+body[data-theme="teletext"] .replay-copy,
+body[data-theme="teletext"] .status-line {
+  font-size: 1.125rem;
 }
 
-.machine[data-theme="teletext"] .session-stats div:nth-child(1) dd {
+/*
+ * VT323 sets a tall line box, and the drawer is the tallest column in the
+ * machine: without this the letters list alone pushes the footer past the fold
+ * at 1280x800.
+ */
+body[data-theme="teletext"] .letters {
+  padding: var(--space-3);
+}
+
+/* VT323 costs height everywhere; Send carries the most rows of any stage. */
+body[data-theme="teletext"] .send-view {
+  gap: var(--space-4);
+}
+
+body[data-theme="teletext"] .send-pad {
+  min-height: 6rem;
+}
+
+body[data-theme="teletext"] .letters-head {
+  line-height: 1.2;
+}
+
+body[data-theme="teletext"] .letters-caption {
+  font-size: 0.9375rem;
+}
+
+body[data-theme="teletext"] .letters-list {
+  gap: 2px;
+}
+
+body[data-theme="teletext"] .letters-foot {
+  padding-top: var(--space-2);
+}
+
+body[data-theme="teletext"] .session-stats div:nth-child(1) dd {
   padding: 0 var(--space-2);
-  background: oklch(0.72 0.20 340);
+  background: var(--tt-magenta);
   color: oklch(0.15 0.03 340);
 }
 
-.machine[data-theme="teletext"] .session-stats div:nth-child(2) dd {
+body[data-theme="teletext"] .session-stats div:nth-child(2) dd {
   padding: 0 var(--space-2);
-  background: oklch(0.80 0.18 145);
+  background: var(--tt-green);
   color: oklch(0.18 0.05 145);
 }
 
-.machine[data-theme="teletext"] .signal-text {
+body[data-theme="teletext"] .signal-text {
   display: none;
 }
 
-.machine[data-theme="teletext"] .signal-bars {
+body[data-theme="teletext"] .signal-bars {
   display: flex;
 }
 
-.machine[data-theme="teletext"] .signal-bars span,
-.machine[data-theme="teletext"] .lesson-signal span {
-  width: 2rem;
-  height: 3rem;
+body[data-theme="teletext"] .signal-bars,
+body[data-theme="teletext"] .intro-signal {
+  --mark-w: 1.75rem;
+  --mark-h: 2.5rem;
+  --mark-dash-w: 5.25rem;
 }
 
-.machine[data-theme="teletext"] .signal-bars span.dash,
-.machine[data-theme="teletext"] .lesson-signal span.dash {
-  width: 6rem;
+body[data-theme="teletext"] .signal-bars[data-group="true"] {
+  --mark-w: 1rem;
+  --mark-h: 1.5rem;
+  --mark-dash-w: 3rem;
 }
 
-.machine[data-theme="teletext"] .decode-line > span:first-child {
+body[data-theme="teletext"] .decode-line > span:first-child {
   padding: 0 var(--space-2);
-  background: oklch(0.72 0.20 340);
+  background: var(--tt-magenta);
   color: oklch(0.15 0.03 340);
-  font-size: 1.5rem;
+  font-size: 1.25rem;
 }
 
-.machine[data-theme="teletext"] .decode-line strong {
-  font-size: 6rem;
+body[data-theme="teletext"] .decode-line strong {
+  font-size: 4.5rem;
   font-weight: 400;
 }
 
-.machine[data-theme="teletext"] .primary-action,
-.machine[data-theme="teletext"] .secondary-action,
-.machine[data-theme="teletext"] .answer-key {
+body[data-theme="teletext"] .primary-action,
+body[data-theme="teletext"] .secondary-action,
+body[data-theme="teletext"] .answer-key,
+body[data-theme="teletext"] .letters-toggle {
   border: 0;
   border-radius: 0;
-  font-family: "VT323", "DM Mono", monospace;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 400;
 }
 
-.machine[data-theme="teletext"] .secondary-action {
-  background: oklch(0.80 0.18 145);
+body[data-theme="teletext"] .secondary-action {
+  background: var(--tt-green);
   color: oklch(0.18 0.05 145);
 }
 
-.machine[data-theme="teletext"] .answer-key {
-  background: var(--machine-surface);
-  font-size: 1.75rem;
+body[data-theme="teletext"] .answer-key {
+  background: var(--theme-surface);
+  font-size: 1.5rem;
 }
 
-.machine[data-theme="teletext"] .machine-footer {
-  min-height: 3.25rem;
+body[data-theme="teletext"] .letters-toggle {
+  background: var(--tt-cyan);
+  color: oklch(0.18 0.05 200);
+}
+
+body[data-theme="teletext"] .intro-letter {
+  font-weight: 400;
+}
+
+body[data-theme="teletext"] .machine-footer {
+  min-height: 3rem;
   border: 0;
-  background: oklch(0.85 0.13 200);
+  background: var(--tt-cyan);
   color: oklch(0.18 0.05 200);
 }
 
-.machine[data-theme="teletext"] .machine-footer > :first-child {
+body[data-theme="teletext"] #footerMode {
   color: oklch(0.18 0.05 200);
 }
 
-.machine[data-theme="teletext"] .machine-footer > :last-child {
+body[data-theme="teletext"] #footerResult {
   color: oklch(0.25 0.08 200);
 }
 
 /* Graphite pocket trainer */
-.machine[data-theme="pocket"] {
-  --machine-bg: oklch(0.31 0.009 250);
-  --machine-surface: oklch(0.39 0.010 250);
-  --machine-surface-strong: oklch(0.47 0.012 250);
-  --machine-text: oklch(0.90 0.006 250);
-  --machine-muted: oklch(0.72 0.008 250);
-  --machine-faint: oklch(0.22 0.008 250);
-  --machine-accent: oklch(0.83 0.045 145);
-  --machine-on-accent: oklch(0.28 0.04 150);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+body[data-theme="pocket"] .machine {
+  padding: var(--space-3);
   box-shadow: inset 0 2px 0 oklch(0.48 0.008 250), 0 8px 10px oklch(0 0 0 / 0.4);
 }
 
-.machine[data-theme="pocket"] .machine-header {
-  min-height: 4.75rem;
-  padding: var(--space-3) var(--space-4);
+body[data-theme="pocket"] .machine-header {
+  padding: var(--space-2) var(--space-4);
   border: 0;
 }
 
-.machine[data-theme="pocket"] .machine-identity > :first-child {
-  color: var(--machine-text);
+body[data-theme="pocket"] .machine-identity > :first-child {
+  color: var(--theme-text);
   letter-spacing: 0.2em;
 }
 
-.machine[data-theme="pocket"] .machine-identity > :last-child,
-.machine[data-theme="pocket"] .session-stats dt {
+body[data-theme="pocket"] .machine-identity > :last-child,
+body[data-theme="pocket"] .session-stats dt {
   font-family: "DM Mono", "Courier New", monospace;
   letter-spacing: 0.12em;
 }
 
-.machine[data-theme="pocket"] .machine-content {
+body[data-theme="pocket"] .machine-content {
   overflow: hidden;
   border-radius: var(--radius-sm);
   background: oklch(0.27 0.009 250);
 }
 
-.machine[data-theme="pocket"] .roster-panel {
+body[data-theme="pocket"] .letters {
   border-right: 0;
   background: oklch(0.34 0.009 250);
 }
 
-.machine[data-theme="pocket"] .practice-stage {
-  padding: var(--space-5);
+body[data-theme="pocket"] .practice-stage {
+  padding: var(--space-4);
+  /* The LCD bezel already adds 20px under the actions; keep the keys close. */
+  --stage-gap: var(--space-2);
 }
 
-.machine[data-theme="pocket"] .learn-view,
-.machine[data-theme="pocket"] .practice-view {
+body[data-theme="pocket"] .intro-card,
+body[data-theme="pocket"] .practice-view,
+body[data-theme="pocket"] .send-view {
+  padding: var(--space-4);
   border: 4px solid oklch(0.19 0.008 250);
   border-radius: var(--radius-sm);
-  background: oklch(0.83 0.045 145);
-  color: oklch(0.30 0.04 150);
+  background: var(--lcd-bg);
+  color: var(--lcd-ink);
   box-shadow: inset 0 3px 8px oklch(0.40 0.03 145 / 0.5);
 }
 
-.machine[data-theme="pocket"] .learn-view,
-.machine[data-theme="pocket"] .practice-view {
-  padding: var(--space-5);
+body[data-theme="pocket"] .machine[data-feedback="correct"] .practice-view {
+  background-color: color-mix(in oklch, var(--lcd-ink) 10%, var(--lcd-bg));
 }
 
-.machine[data-theme="pocket"] .lesson-meta,
-.machine[data-theme="pocket"] .lesson-letter,
-.machine[data-theme="pocket"] .lesson-spoken,
-.machine[data-theme="pocket"] .lesson-note,
-.machine[data-theme="pocket"] .status-line,
-.machine[data-theme="pocket"] .decode-line,
-.machine[data-theme="pocket"] .decode-line strong,
-.machine[data-theme="pocket"] .sprint-copy,
-.machine[data-theme="pocket"] .replay-copy {
-  color: oklch(0.30 0.04 150);
+body[data-theme="pocket"] .machine[data-feedback="incorrect"] .practice-view {
+  background-color: color-mix(in oklch, var(--danger) 10%, var(--lcd-bg));
 }
 
-.machine[data-theme="pocket"] .lesson-signal span,
-.machine[data-theme="pocket"] .signal-bars span,
-.machine[data-theme="pocket"] .cursor,
-.machine[data-theme="pocket"] .time-track span {
-  background: oklch(0.30 0.04 150);
+body[data-theme="pocket"] .intro-tag,
+body[data-theme="pocket"] .intro-letter,
+body[data-theme="pocket"] .intro-spoken,
+body[data-theme="pocket"] .intro-note,
+body[data-theme="pocket"] .status-line,
+body[data-theme="pocket"] .decode-line,
+body[data-theme="pocket"] .decode-line strong,
+body[data-theme="pocket"] .sprint-copy,
+body[data-theme="pocket"] .send-target,
+body[data-theme="pocket"] .send-target strong,
+body[data-theme="pocket"] .replay-copy {
+  color: var(--lcd-ink);
 }
 
-.machine[data-theme="pocket"][data-mode="sprint"] .practice-view {
-  padding-top: 6rem;
+body[data-theme="pocket"] .machine[data-reveal="shown"] .signal-bars span,
+body[data-theme="pocket"] .intro-signal span,
+body[data-theme="pocket"] .send-mark:not(.placeholder):not([data-match="false"]),
+body[data-theme="pocket"] .cursor,
+body[data-theme="pocket"] .time-track span {
+  background: var(--lcd-ink);
 }
 
-.machine[data-theme="pocket"] .sprint-panel {
-  padding: var(--space-3) var(--space-4);
+body[data-theme="pocket"] .send-mark.placeholder {
+  border-color: color-mix(in oklch, var(--lcd-ink) 45%, transparent);
 }
 
-.machine[data-theme="pocket"] .signal-text {
+body[data-theme="pocket"] .text-action {
+  color: var(--lcd-ink);
+}
+
+body[data-theme="pocket"] .text-action::after {
+  background: var(--lcd-ink);
+}
+
+body[data-theme="pocket"] .send-pad {
+  border-color: oklch(0.19 0.008 250);
+  background: oklch(0.40 0.010 250);
+  color: oklch(0.94 0.006 250);
+  box-shadow: inset 0 -3px 0 oklch(0.26 0.008 250);
+}
+
+/* The LCD bezel and the You/Ideal trace both cost height: keep the paddle in
+   proportion so a checked transmission still fits above the fold. */
+body[data-theme="pocket"] .send-pad {
+  min-height: 6rem;
+}
+
+body[data-theme="pocket"] .sprint-panel {
+  padding: var(--space-2) var(--space-3);
+}
+
+body[data-theme="pocket"] .signal-text {
   display: none;
 }
 
-.machine[data-theme="pocket"] .signal-bars {
+body[data-theme="pocket"] .signal-bars {
   display: flex;
 }
 
-.machine[data-theme="pocket"] .signal-button:hover,
-.machine[data-theme="pocket"] .signal-button:active {
+body[data-theme="pocket"] .signal-button:active {
   background: oklch(0.77 0.04 145);
 }
 
-.machine[data-theme="pocket"] .primary-action,
-.machine[data-theme="pocket"] .secondary-action,
-.machine[data-theme="pocket"] .answer-key {
+body[data-theme="pocket"] .primary-action,
+body[data-theme="pocket"] .secondary-action,
+body[data-theme="pocket"] .answer-key,
+body[data-theme="pocket"] .letters-toggle {
   border: 0;
   border-radius: var(--radius-sm);
   background: oklch(0.40 0.010 250);
@@ -256,25 +360,47 @@
   box-shadow: inset 0 -3px 0 oklch(0.26 0.008 250);
 }
 
-.machine[data-theme="pocket"] .primary-action:hover,
-.machine[data-theme="pocket"] .secondary-action:hover {
-  background: oklch(0.50 0.012 250);
-  color: oklch(0.98 0.004 250);
-}
-
-.machine[data-theme="pocket"] .answer-key:hover {
-  background: var(--machine-accent);
-  color: var(--machine-on-accent);
-}
-
-.machine[data-theme="pocket"] #hearLesson,
-.machine[data-theme="pocket"] #replayButton {
+body[data-theme="pocket"] #introHear,
+body[data-theme="pocket"] #replayButton,
+body[data-theme="pocket"] #sendReplay {
   background: oklch(0.56 0.18 25);
   color: oklch(0.98 0.005 25);
 }
 
-.machine[data-theme="pocket"] .machine-footer {
+body[data-theme="pocket"] #sendReplay {
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+body[data-theme="pocket"] #sendReplay::after {
+  display: none;
+}
+
+body[data-theme="pocket"] .machine-footer {
   border: 0;
   font-family: "DM Mono", "Courier New", monospace;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body[data-theme="terminal"] .primary-action:hover {
+    background: var(--theme-accent);
+    color: var(--theme-on-accent);
+  }
+
+  body[data-theme="pocket"] .signal-button:hover {
+    background: oklch(0.77 0.04 145);
+  }
+
+  body[data-theme="pocket"] .primary-action:hover,
+  body[data-theme="pocket"] .secondary-action:hover,
+  body[data-theme="pocket"] .letters-toggle:hover {
+    background: oklch(0.50 0.012 250);
+    color: oklch(0.98 0.004 250);
+  }
+
+  body[data-theme="pocket"] .answer-key:hover {
+    background: var(--theme-accent);
+    color: var(--theme-on-accent);
+  }
 }
 }

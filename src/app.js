@@ -1,20 +1,22 @@
 import {
-  DIFFICULTIES,
+  SPEEDS,
   SPRINT_SECONDS,
+  SPRINT_UNLOCK_AT,
   STORAGE_KEYS,
   THEMES,
   VALID_MODES,
 } from "./config.js";
-import { randomLetter } from "./data/morse.js";
-import { createOnboardingController } from "./features/onboarding.js";
-import { createSignalLabController } from "./features/signal-lab.js";
-import { readPerformanceProfile } from "./features/signal-lab/performance-profile.js";
-import { createSpeedPickerController } from "./features/speed-picker.js";
+import { appendEvent, readEvents, writeEvents } from "./features/events.js";
+import { createGuideController } from "./features/guide.js";
+import { readPerformanceProfile, recordPerformance as updatePerformanceProfile } from "./features/performance-profile.js";
+import { LEGACY_MODES, markSeededFromHistory, nextTarget, readProgress, unlockedLetters } from "./features/progress.js";
+import { createSendController } from "./features/send.js";
+import { createSettingsController } from "./features/settings.js";
 import { createTrainerController } from "./features/trainer.js";
 import { MorseAudio } from "./platform/morse-audio.js";
 import { createStorage } from "./platform/storage.js";
 import { getElements } from "./ui/elements.js";
-import { buildAnswerGrid, buildRoster } from "./ui/signals.js";
+import { createLettersController } from "./ui/letters.js";
 
 const storage = createStorage();
 const elements = getElements();
@@ -28,60 +30,97 @@ function initialTheme() {
   return Object.hasOwn(THEMES, stored) ? stored : "terminal";
 }
 
-function initialMode() {
+function storedMode() {
   const requested = query.get("mode");
   if (VALID_MODES.includes(requested)) return requested;
   const stored = storage.get(STORAGE_KEYS.mode);
+  if (Object.hasOwn(LEGACY_MODES, stored)) return LEGACY_MODES[stored];
   return VALID_MODES.includes(stored) ? stored : "learn";
+}
+
+/** Sprint is earned. Asking for it too early lands on Learn without a scolding. */
+function initialMode(unlocked) {
+  const requested = storedMode();
+  return requested === "sprint" && unlocked < SPRINT_UNLOCK_AT ? "learn" : requested;
 }
 
 function initialDifficulty() {
   const stored = storage.get(STORAGE_KEYS.difficulty);
-  return Object.hasOwn(DIFFICULTIES, stored) ? stored : "steady";
+  return Object.hasOwn(SPEEDS, stored) ? stored : "steady";
 }
 
 const theme = initialTheme();
-const mode = initialMode();
+const performanceProfile = readPerformanceProfile(storage);
+const progress = markSeededFromHistory(readProgress(storage), performanceProfile);
+const mode = initialMode(progress.unlocked);
 const difficulty = initialDifficulty();
+const pool = unlockedLetters(progress);
 
 const state = {
   theme,
   mode,
   difficulty,
-  onboardingOpen: storage.get(STORAGE_KEYS.onboarding) !== "true",
+  progress,
+  onboardingOpen: query.get("guide") !== "off" && storage.get(STORAGE_KEYS.onboarding) !== "true",
   onboardingStep: 1,
-  onboardingMode: mode,
   onboardingTheme: theme,
-  target: randomLetter(),
-  learnIndex: 0,
-  typed: "_",
-  status: mode === "learn" ? "Guided lesson" : mode === "sprint" ? "Press start when ready" : "Listening",
+  target: nextTarget(pool),
+  roundType: "letter",
+  roundReason: null,
+  typed: "",
+  firstListen: true,
+  status: mode === "sprint" ? "Press start when ready" : "Listening",
   feedback: "neutral",
   streak: 0,
   correct: 0,
   total: 0,
   revealed: false,
+  revealMarks: false,
+  playing: false,
   locked: false,
   running: false,
   timeLeft: SPRINT_SECONDS,
   sprintScore: 0,
+  sprintInstant: 0,
   sprintBest: storage.getNumber(STORAGE_KEYS.sprintBest),
+  sprintCompleted: storage.getNumber(STORAGE_KEYS.sprintBest) > 0,
+  sprintBeatBest: false,
   sprintDeadline: 0,
-  lastAnswer: null,
+  correctKeys: [],
+  wrongKeys: [],
   lastOutcome: null,
   roundStartedAt: performance.now(),
-  performanceProfile: readPerformanceProfile(storage),
-  labView: "mirror",
-  mirrorTarget: randomLetter(),
-  mirrorMarks: [],
-  mirrorEvaluated: false,
-  mirrorResult: "Hear the target, then repeat its rhythm.",
-  mirrorOutcome: "neutral",
-  mirrorPressStartedAt: 0,
-  mirrorPointerId: null,
-  mirrorKeyboardPressed: false,
-  clinicPair: null,
-  profileResetArmed: false,
+  performanceProfile,
+  sessionAnswered: 0,
+  sessionDone: false,
+  sessionSentence: "",
+  sessionExtras: 0,
+  seedIndex: 0,
+  introSeeded: false,
+  seenRound: {},
+  served: {},
+  skippedPhases: [],
+  retries: [],
+  heldBackThisSession: [],
+  lapsedThisSession: [],
+  relearnedThisSession: [],
+  groupStreaks: { miss: 0, clean: 0 },
+  spacingDirection: null,
+  wasReadyForNew: true,
+  roundInterrupted: false,
+  events: readEvents(storage),
+  introLetter: null,
+  revealedLetters: [],
+  lettersOpen: false,
+  resetArmed: false,
+  sendTarget: nextTarget(pool),
+  sendMarks: [],
+  sendEvaluated: false,
+  sendStatus: "Hear the target, then send it back",
+  sendOutcome: "neutral",
+  sendPressStartedAt: 0,
+  sendPointerId: null,
+  sendKeyboardPressed: false,
 };
 
 function announce(message) {
@@ -98,33 +137,55 @@ const context = {
   audio,
   announce,
   render: null,
+  persistProfile: null,
+  recordPerformance: null,
+  logEvent: null,
   trainer: null,
-  onboarding: null,
-  signalLab: null,
-  speedPicker: null,
+  guide: null,
+  send: null,
+  settings: null,
+  letters: null,
+};
+
+context.persistProfile = () => storage.setJson(STORAGE_KEYS.performance, state.performanceProfile);
+/**
+ * The attempt log is append-only and capped. It is the only record that can
+ * answer "did it survive the night", which counters structurally cannot.
+ */
+context.logEvent = (event) => {
+  state.events = appendEvent(state.events, event);
+  writeEvents(storage, state.events);
+};
+context.recordPerformance = (target, answered, hit, responseMs, options) => {
+  updatePerformanceProfile(state.performanceProfile, target, answered, hit, responseMs, options);
+  context.persistProfile();
 };
 
 context.trainer = createTrainerController(context);
-context.onboarding = createOnboardingController(context);
-context.signalLab = createSignalLabController(context);
-context.speedPicker = createSpeedPickerController(context);
+context.guide = createGuideController(context);
+context.send = createSendController(context);
+context.settings = createSettingsController(context);
+context.letters = createLettersController(context);
 context.render = () => {
   context.trainer.render();
-  context.onboarding.render();
-  context.signalLab.render();
+  context.guide.render();
+  context.send.render();
+  context.settings.render();
+  context.letters.render();
 };
 Object.seal(context);
 
-buildRoster(elements.roster);
-buildAnswerGrid(elements.answerGrid, context.trainer.answer);
 context.trainer.bind();
-context.onboarding.bind();
-context.signalLab.bind();
-context.speedPicker.bind();
+context.guide.bind();
+context.send.bind();
+context.settings.bind();
+context.letters.bind();
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible") context.signalLab.finishMirrorPress(true);
+  if (document.visibilityState !== "visible") context.send.finishPress(true);
   if (document.visibilityState === "visible" && state.running) context.trainer.updateSprint();
 });
 
 context.render();
+// The trainer picks the first exercise too — the learner never chooses one.
+if (state.mode === "learn") context.trainer.newRound(false);

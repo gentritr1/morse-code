@@ -4,70 +4,99 @@
     scroll-behavior: auto !important;
   }
 
-  .onboarding-step {
-    animation: onboarding-fade 120ms var(--ease-out) both;
-  }
-
-  .guide-button,
-  .speed-trigger,
-  .speed-menu button,
-  .quiet-action,
-  .onboarding-next,
-  .first-signal,
-  .path-picker button,
+  .icon-button,
+  .segmented-control button,
+  .text-button,
   .theme-preview,
+  .rhythm-select,
+  .rhythm-hear,
+  .guide-skip,
+  .guide-quiet,
+  .guide-next,
+  .first-signal,
   .primary-action,
   .secondary-action,
   .signal-button,
-  .answer-key {
+  .send-pad,
+  .answer-key,
+  .letters-toggle {
     transform: none !important;
     transition-property: color, background-color, border-color, opacity;
   }
 
-  .lab-primary-action,
-  .lab-secondary-action {
+  /* Enters keep opacity only. */
+  .guide,
+  .guide-step,
+  .intro-card,
+  .practice-view,
+  .send-view,
+  .settings-panel,
+  .typed-slot {
     transform: none !important;
-    transition-property: color, background-color, border-color, opacity;
+    transition:
+      opacity 120ms var(--ease-out),
+      overlay 120ms allow-discrete,
+      display 120ms allow-discrete;
+  }
+
+  .guide[open]::backdrop,
+  .settings-panel::backdrop {
+    transition: opacity 120ms var(--ease-out), overlay 120ms allow-discrete, display 120ms allow-discrete;
+    backdrop-filter: none;
+  }
+
+  .sheet-scrim {
+    animation: none;
+    backdrop-filter: none;
+  }
+
+  .letters {
+    transition: visibility 120ms;
+  }
+
+  .symbol-char,
+  .intro-signal span,
+  .signal-bars span,
+  .first-signal-pattern i {
+    transform: none !important;
+    /* Width still has to change — it is the placeholder, not decoration — but it
+       changes instantly rather than sliding. */
+    transition-property: opacity, background-color, color, box-shadow, text-shadow;
+  }
+
+  .guide-dots span {
+    transition: background-color 120ms var(--ease-out);
+  }
+
+  .cursor,
+  .answer-key.was-correct,
+  .session-stats dd[data-pop="true"],
+  .status-line[data-pop="true"] {
+    animation: none;
   }
 
   .recognition-track span,
-  .clinic-progress span {
-    transition: none;
-  }
-
-  .speed-menu {
-    transform: none;
-    transition: opacity 120ms var(--ease-out), overlay 120ms allow-discrete, display 120ms allow-discrete;
-  }
-
-  .chevron {
-    transition: none;
-  }
-
+  .session-rail i,
+  .retention-dot,
+  .trace-bars i,
   .skip-link,
   .time-track span {
     transition: none;
   }
-
-  .first-signal-pattern i.is-playing {
-    transform: none;
-  }
-
-  @keyframes onboarding-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
 }
 
 @media (forced-colors: active) {
-  .theme-dot,
-  .lesson-signal span,
+  .intro-signal span,
   .signal-bars span,
+  .first-signal-pattern i,
+  .guide-dots span,
   .cursor,
   .time-track span,
-  .mirror-mark,
-  .recognition-track span,
-  .clinic-progress span {
+  .send-mark,
+  .session-rail i,
+  .retention-dot,
+  .trace-bars i,
+  .recognition-track span {
     forced-color-adjust: auto;
   }
 }

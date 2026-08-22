@@ -1,394 +1,116 @@
 @layer responsive {
 @media (max-width: 73.75rem) {
-  .app-bar {
-    align-items: flex-start;
-  }
-
-  .toolbar {
-    flex-wrap: wrap;
-  }
-
   .machine-content {
-    grid-template-columns: 14rem minmax(0, 1fr);
+    grid-template-columns: 15rem minmax(0, 1fr);
+  }
+
+  .letters-list li {
+    grid-template-columns: 1.25rem 3.25rem minmax(1rem, 1fr) 4.25rem;
   }
 
   .practice-stage {
-    padding-inline: var(--space-5);
-  }
-
-  .coach-strip {
-    grid-template-columns: minmax(13rem, 0.8fr) minmax(20rem, 1.2fr);
-  }
-
-  .coach-note {
-    grid-column: 1 / -1;
-  }
-
-  .lab-panel {
-    grid-template-columns: minmax(15rem, 0.62fr) minmax(26rem, 1.38fr);
-    gap: var(--space-6);
-  }
-
-  .fingerprint-table-heading,
-  .fingerprint-table li {
-    grid-template-columns: 4rem minmax(8rem, 1fr) 5.5rem 7rem;
+    padding-inline: var(--space-4);
   }
 }
 
+/* Below this the letters column becomes a sheet summoned from the footer. */
 @media (max-width: 56.25rem) {
-  .app-bar {
-    flex-direction: column;
-    padding-right: max(var(--space-5), env(safe-area-inset-right));
-  }
-
-  .app-identity {
-    min-width: 0;
-    max-width: calc(100% - 10rem);
-  }
-
-  .toolbar {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .guide-button {
-    position: absolute;
-    top: max(var(--space-4), env(safe-area-inset-top));
-    right: max(var(--space-5), env(safe-area-inset-right));
-  }
-
-  .control-set {
-    flex: 1 1 18rem;
-  }
-
-  .speed-control {
-    flex: 1 1 11rem;
-  }
-
-  .speed-trigger {
-    width: 100%;
-  }
-
-  .segmented-control button {
-    flex: 1;
-  }
-
   .machine-content {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .roster-panel {
+  .letters {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: var(--layer-sheet);
+    max-height: min(78dvh, 38rem);
+    overflow-y: auto;
+    padding: var(--space-4) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
+    border: 1px solid var(--theme-faint);
+    border-right: 0;
+    border-radius: 16px 16px 0 0;
+    background: var(--theme-surface);
+    visibility: hidden;
+    transform: translateY(100%);
+    transition:
+      var(--theme-crossfade),
+      transform var(--motion-sheet) var(--ease-drawer),
+      visibility var(--motion-sheet) var(--ease-drawer);
+  }
+
+  body[data-letters="open"] .letters {
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .letters-list li {
+    min-height: 2.25rem;
+    grid-template-columns: 1.5rem 4.5rem minmax(2rem, 1fr) 6rem;
+  }
+
+  .letters-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .keyboard-help {
     display: none;
   }
 
-  .answer-grid {
-    grid-template-columns: repeat(5, minmax(2.75rem, 1fr));
-  }
-
-  .machine[data-theme="pocket"] .practice-stage {
+  body[data-theme="pocket"] .practice-stage {
     background: oklch(0.27 0.009 250);
-  }
-
-  .onboarding-step {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-5);
-  }
-
-  .first-signal {
-    min-height: 15rem;
-  }
-
-  .coach-strip {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-3);
-  }
-
-  .coach-note {
-    grid-column: auto;
-  }
-
-  .signal-lab-header {
-    align-items: flex-start;
-  }
-
-  .lab-stage {
-    min-height: 0;
-    padding: var(--space-5);
-  }
-
-  .lab-panel {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-6);
-  }
-
-  .lab-panel-copy {
-    max-width: none;
-  }
-
-  .lab-panel-copy h3 {
-    max-width: 18ch;
-  }
-
-  .mirror-target {
-    margin-top: var(--space-5);
-    padding-top: var(--space-4);
   }
 }
 
 @media (max-width: 39.9375rem) {
   .app-bar {
     padding-inline: var(--space-3);
-    gap: var(--space-4);
+    gap: var(--space-2);
   }
 
-  .app-identity {
-    max-width: calc(100% - 8rem);
-  }
-
-  .app-identity div > span {
-    display: none;
-  }
-
-  .guide-button {
-    right: var(--space-3);
-  }
-
-  .guide-button small {
-    display: none;
-  }
-
-  .toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    min-width: 0;
-  }
-
-  body[data-onboarding="open"] .toolbar {
-    display: none;
-  }
-
-  .control-set,
-  .speed-control {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .speed-trigger {
-    width: 100%;
-  }
-
-  .segmented-control {
-    width: 100%;
-    min-width: 0;
-    flex-wrap: wrap;
-  }
-
-  .segmented-control button {
-    min-width: 0;
-    flex-basis: 5.75rem;
+  .mode-control button {
     padding-inline: var(--space-2);
-    white-space: normal;
-  }
-
-  .theme-control button {
-    gap: var(--space-1);
+    font-size: 0.8125rem;
   }
 
   .app-main {
-    padding: var(--space-3) var(--space-3) max(var(--space-6), env(safe-area-inset-bottom));
+    padding: var(--space-3) var(--space-3) max(var(--space-4), env(safe-area-inset-bottom));
   }
 
-  .onboarding {
-    padding: var(--space-4);
-  }
-
-  .onboarding-progress {
-    margin-bottom: var(--space-4);
-  }
-
-  .onboarding-progress span {
-    font-size: 0;
-  }
-
-  .onboarding-progress span b {
-    font-size: 0.75rem;
-  }
-
-  .onboarding-step {
-    min-height: 0;
-  }
-
-  .onboarding-copy h2,
-  .onboarding-copy.compact h2 {
-    max-width: none;
-    font-size: 1.75rem;
-    line-height: 1.08;
-  }
-
-  .onboarding-actions:not(.spread) {
-    flex-direction: column-reverse;
-    align-items: stretch;
-  }
-
-  .onboarding-actions button {
+  /* Settings becomes a bottom sheet: same element, different anchor. */
+  .settings-panel {
+    inset: auto 0 0;
     width: 100%;
+    max-height: min(80dvh, 34rem);
+    padding: var(--space-4) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    transform: translateY(100%);
+    transform-origin: bottom center;
+    transition:
+      opacity var(--motion-sheet) var(--ease-drawer),
+      transform var(--motion-sheet) var(--ease-drawer),
+      overlay var(--motion-sheet) allow-discrete,
+      display var(--motion-sheet) allow-discrete;
   }
 
-  .first-signal {
-    min-height: 13.5rem;
-    padding: var(--space-4);
+  .settings-panel:popover-open {
+    transform: translateY(0);
   }
 
-  .path-picker button {
-    grid-template-columns: 2rem minmax(0, 1fr);
-    gap: var(--space-3);
+  @starting-style {
+    .settings-panel:popover-open {
+      opacity: 0;
+      transform: translateY(100%);
+    }
   }
 
-  .choice-time {
-    display: none;
-  }
-
-  .onboarding-themes {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .theme-preview {
-    display: grid;
-    grid-template-columns: 8rem minmax(0, 1fr);
-    align-items: center;
-  }
-
-  .preview-screen {
-    min-height: 6rem;
-  }
-
-  .coach-strip {
-    padding: var(--space-3);
-  }
-
-  .signal-lab {
-    margin-top: var(--space-4);
-    border-radius: var(--radius-sm);
-  }
-
-  .signal-lab[data-theme="pocket"] {
-    padding: var(--space-1);
-  }
-
-  .signal-lab-header {
-    min-height: 0;
-    padding: var(--space-4);
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .lab-profile-status {
-    min-width: 0;
-    align-items: flex-start;
-    text-align: left;
-  }
-
-  .lab-tabs button {
-    min-height: 3.5rem;
-    padding: var(--space-2);
-    align-items: center;
-    text-align: center;
-  }
-
-  .lab-tabs button small {
-    display: none;
-  }
-
-  .lab-stage {
-    padding: var(--space-4) var(--space-3);
-  }
-
-  .lab-panel {
-    gap: var(--space-5);
-  }
-
-  .lab-panel-copy h3 {
-    max-width: none;
-    font-size: 2.25rem;
-  }
-
-  .mirror-workbench {
-    padding: var(--space-3);
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
-  }
-
-  .mirror-pad {
-    grid-column: 1;
-    grid-row: auto;
-    min-height: 8.5rem;
-  }
-
-  .mirror-result {
-    grid-column: 1;
-  }
-
-  .mirror-actions button,
-  .clinic-actions button,
-  .fingerprint-actions .lab-primary-action {
-    flex: 1;
-  }
-
-  .fingerprint-table {
-    padding: var(--space-2);
-  }
-
-  .fingerprint-table-heading {
-    display: none;
-  }
-
-  .fingerprint-table li {
-    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
-    gap: var(--space-2);
-  }
-
-  .fingerprint-time {
-    display: none;
-  }
-
-  .fingerprint-recognition {
-    grid-template-columns: minmax(4rem, auto) minmax(3rem, 1fr);
-    gap: var(--space-2);
-  }
-
-  .clinic-state,
-  .lab-empty-state {
-    min-height: 20rem;
-    padding: var(--space-4);
-  }
-
-  .clinic-pair {
-    gap: var(--space-2);
-  }
-
-  .clinic-pair div {
-    min-height: 7.5rem;
-    padding: var(--space-3);
-  }
-
-  .clinic-pair strong {
-    font-size: 2.25rem;
-  }
-
-  .coach-steps {
-    justify-content: flex-start;
-  }
-
-  .coach-steps li {
-    flex: 0 1 auto;
-  }
-
-  .coach-steps li::after {
-    width: 1.5rem;
+  .settings-panel::backdrop {
+    background: oklch(0 0 0 / 0.6);
+    backdrop-filter: blur(8px);
   }
 
   .machine {
-    min-height: 42rem;
+    min-height: 0;
     border-radius: var(--radius-sm);
   }
 
@@ -397,7 +119,7 @@
     padding: var(--space-3);
     align-items: flex-start;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-2);
   }
 
   .session-stats {
@@ -411,78 +133,81 @@
   }
 
   .practice-stage {
-    min-height: 32rem;
-    padding: var(--space-4) var(--space-3);
-    gap: var(--space-4);
+    padding: var(--space-3);
+    --stage-gap: var(--space-3);
   }
 
-  .learn-view,
-  .practice-view {
-    min-height: 20rem;
-  }
-
-  .lesson-core {
-    min-height: 8rem;
+  .intro-core {
     gap: var(--space-5);
   }
 
-  .lesson-letter {
-    font-size: 5rem;
+  .intro-letter {
+    font-size: 4.5rem;
   }
 
-  .lesson-signal,
-  .signal-bars {
-    gap: var(--space-2);
+  .intro-signal,
+  .signal-bars,
+  .signal-text {
+    --mark-w: 0.875rem;
+    --mark-h: 0.875rem;
+    --mark-dash-w: 2.625rem;
+    --mark-gap: var(--space-2);
+    gap: var(--space-4);
   }
 
-  .lesson-signal span,
-  .signal-bars span {
-    width: 0.875rem;
-    height: 0.875rem;
+  .signal-bars[data-group="true"] {
+    --mark-w: 0.625rem;
+    --mark-h: 0.625rem;
+    --mark-dash-w: 1.875rem;
+    --mark-gap: var(--space-1);
+    gap: var(--space-3);
   }
 
-  .lesson-signal span.dash,
-  .signal-bars span.dash {
-    width: 2.625rem;
+  .signal-text[data-group="true"] {
+    --mark-gap: var(--space-1);
+    min-height: 1.8rem;
+    font-size: 2rem;
+    gap: var(--space-3);
   }
 
-  .lesson-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+  .mark-space {
+    width: var(--space-4);
   }
 
-  .lesson-actions #previousLesson {
-    grid-column: 1 / -1;
-  }
-
-  .lesson-actions button,
-  .practice-actions button {
+  .intro-actions button,
+  .practice-actions button,
+  .send-actions button {
     flex: 1;
   }
 
   .signal-button {
-    min-height: 7rem;
+    min-height: 5.5rem;
     padding-inline: var(--space-2);
   }
 
   .signal-text {
-    font-size: 3.75rem;
+    min-height: 3.15rem;
+    font-size: 3.5rem;
+  }
+
+  .decode-line {
+    min-height: 3rem;
   }
 
   .decode-line strong {
-    font-size: 3.25rem;
+    font-size: 2.75rem;
   }
 
   .cursor {
-    width: 0.625rem;
-    height: 2.5rem;
+    height: 2rem;
   }
 
-  .answer-heading > :last-child {
-    display: none;
+  .send-pad {
+    min-height: 6rem;
   }
 
   .answer-key {
+    width: 3rem;
     min-height: 3rem;
   }
 
@@ -490,59 +215,61 @@
     padding-inline: var(--space-3);
   }
 
-  .keyboard-help {
-    display: none;
+  body[data-theme="teletext"] .machine-identity > :first-child {
+    font-size: 1.5rem;
   }
 
-  .machine[data-theme="teletext"] .machine-identity > :first-child {
-    font-size: 1.75rem;
+  body[data-theme="teletext"] .session-stats dt,
+  body[data-theme="teletext"] .session-stats dd {
+    font-size: 1rem;
   }
 
-  .machine[data-theme="teletext"] .session-stats dt,
-  .machine[data-theme="teletext"] .session-stats dd {
-    font-size: 1.125rem;
+  body[data-theme="teletext"] .signal-bars,
+  body[data-theme="teletext"] .intro-signal {
+    --mark-w: 1.25rem;
+    --mark-h: 2rem;
+    --mark-dash-w: 3.75rem;
   }
 
-  .machine[data-theme="teletext"] .signal-bars span,
-  .machine[data-theme="teletext"] .lesson-signal span {
-    width: 1.25rem;
-    height: 2rem;
+  body[data-theme="teletext"] .signal-bars[data-group="true"] {
+    --mark-w: 0.5rem;
+    --mark-h: 0.875rem;
+    --mark-dash-w: 1.5rem;
   }
 
-  .machine[data-theme="teletext"] .signal-bars span.dash,
-  .machine[data-theme="teletext"] .lesson-signal span.dash {
-    width: 3.75rem;
+  body[data-theme="teletext"] .decode-line strong {
+    font-size: 3.5rem;
   }
 
-  .machine[data-theme="teletext"] .decode-line strong {
-    font-size: 4.5rem;
-  }
-
-  .machine[data-theme="pocket"] {
+  body[data-theme="pocket"] .machine {
     padding: var(--space-2);
   }
 
-  .machine[data-theme="pocket"] .machine-header {
+  body[data-theme="pocket"] .machine-header {
     padding: var(--space-3);
   }
 
-  .machine[data-theme="pocket"] .practice-stage {
+  body[data-theme="pocket"] .practice-stage {
     padding: var(--space-3);
   }
 
-  .machine[data-theme="pocket"] .learn-view,
-  .machine[data-theme="pocket"] .practice-view {
-    padding: var(--space-4) var(--space-3);
+  body[data-theme="pocket"] .intro-card,
+  body[data-theme="pocket"] .practice-view,
+  body[data-theme="pocket"] .send-view {
+    padding: var(--space-3);
+  }
+}
+
+/* Only the glyph survives on the narrowest handsets so the bar stays one row. */
+@media (max-width: 26.25rem) {
+  .app-identity strong {
+    display: none;
   }
 }
 
 @media (max-height: 43.75rem) and (orientation: landscape) {
-  .app-bar {
-    position: static;
-  }
-
   .machine {
-    min-height: 34rem;
+    min-height: 0;
   }
 
   .practice-stage {
@@ -550,13 +277,13 @@
     gap: var(--space-3);
   }
 
-  .learn-view,
-  .practice-view {
-    min-height: 16rem;
+  .signal-button {
+    min-height: 4.5rem;
   }
 
-  .signal-button {
-    min-height: 5rem;
+  .guide {
+    max-height: calc(100dvh - 1.5rem);
+    overflow-y: auto;
   }
 }
 }

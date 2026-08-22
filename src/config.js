@@ -7,54 +7,142 @@ export const STORAGE_KEYS = Object.freeze({
   onboarding: "morse-trainer-onboarding-complete",
   sprintBest: "morse-trainer-sprint-best",
   performance: "morse-trainer-performance-v1",
+  progress: "morse-trainer-progress-v1",
+  events: "morse-trainer-events-v1",
 });
+
+/**
+ * Koch-derived teaching order inside the starter pool: two characters to begin,
+ * one more each time recognition holds. A and N stay far apart, and the two
+ * single-element characters come last so beginners cannot lean on them.
+ */
+export const KOCH_ORDER = Object.freeze(["K", "M", "R", "S", "A", "T", "O", "I", "N", "E"]);
 
 export const THEMES = Object.freeze({
   terminal: {
+    label: "Terminal",
     title: "MORSE TRAINER v1.4",
     subtitle: "AMBER TERMINAL · SET 04",
-    roster: "Starter alphabet",
   },
   teletext: {
+    label: "Teletext",
     title: "MORSE 404",
     subtitle: "BROADCAST TELETEXT · PAGE 404",
-    roster: "Page index",
   },
   pocket: {
+    label: "Pocket Trainer",
     title: "CW-83",
     subtitle: "POCKET TRAINER · DESK UNIT",
-    roster: "Alphabet bank",
   },
 });
 
-export const DIFFICULTIES = Object.freeze({
-  gentle: 8,
-  steady: 13,
-  brisk: 20,
+/**
+ * Farnsworth speeds: characters are always sent fast enough that they arrive as
+ * one sound, and the gaps between them carry the difficulty. Counting a 450 ms
+ * dash is a visual habit, so the slowest preset still sends characters at 18 wpm
+ * — the bottom of the range the ARRL slow-speed material and CW Academy span —
+ * and only the spacing changes across the three presets.
+ */
+export const SPEEDS = Object.freeze({
+  gentle: { label: "Gentle", charWpm: 18, effectiveWpm: 8, hint: "18 wpm · wide gaps" },
+  steady: { label: "Steady", charWpm: 22, effectiveWpm: 10, hint: "22 wpm" },
+  brisk: { label: "Brisk", charWpm: 25, effectiveWpm: 14, hint: "25 wpm · tight gaps" },
 });
 
-export const DIFFICULTY_DETAILS = Object.freeze({
-  gentle: { label: "Gentle", meta: "8 WPM · clear spacing" },
-  steady: { label: "Steady", meta: "13 WPM · recommended" },
-  brisk: { label: "Brisk", meta: "20 WPM · fast recall" },
-});
+export const VALID_MODES = Object.freeze(["learn", "sprint", "send"]);
 
-export const MODE_GUIDANCE = Object.freeze({
-  learn: {
-    label: "Learn path",
-    title: "Build one clean sound-to-letter connection.",
-    steps: ["Hear it", "See the shape", "Move on"],
-  },
-  drill: {
-    label: "Drill path",
-    title: "Turn recognition into fast, reliable recall.",
-    steps: ["Listen", "Choose a letter", "Read feedback"],
-  },
-  sprint: {
-    label: "Sprint path",
-    title: "Measure how many signals you recognize under time.",
-    steps: ["Start 30 sec", "Decode quickly", "Beat your best"],
-  },
-});
+/** A letter counts as known only after this many clean first listens. */
+export const FIRST_LISTEN_MIN = 5;
+/** Outcomes and response times kept per letter. */
+export const RECENT_WINDOW = 5;
+/** Recent hits needed inside that window before a letter reads as Steady. */
+export const STEADY_HITS = 4;
+/** Median first-listen response at or under this reads as Instant. */
+export const INSTANT_MS = 2000;
+/** One guided session. Roughly five minutes. */
+export const SESSION_ROUNDS = 20;
+/** Sprint is a checkpoint, not a starting point. */
+export const SPRINT_UNLOCK_AT = 5;
+/** A mastered letter goes stale after this many rounds or this much time. */
+export const REVIEW_ROUNDS = 20;
+export const REVIEW_MS = 24 * 60 * 60 * 1000;
+/** Group rounds (bursts and words) start once the pool is worth combining. */
+export const GROUP_UNLOCK_AT = 3;
 
-export const VALID_MODES = Object.freeze(["learn", "drill", "sprint"]);
+/**
+ * Retention needs a real gap. Answering a character cleanly twice in one sitting
+ * proves it is in short-term memory; the same character coming back clean after
+ * a night is the only evidence that it stuck, so stability is confirmed across
+ * a gap of at least this long, and decays after two days out of the ear.
+ */
+export const STABLE_GAP_MS = 20 * 60 * 60 * 1000;
+export const FADING_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * The shape of one guided session. The rail shows it: arrive on what is already
+ * known, repair the weak spots, take delivery of a new character, mix, then use
+ * the alphabet on groups and words.
+ */
+export const SESSION_PHASES = Object.freeze([
+  Object.freeze({ id: "arrive", label: "ARRIVE", through: 4 }),
+  Object.freeze({ id: "repair", label: "REPAIR", through: 8 }),
+  Object.freeze({ id: "new", label: "NEW", through: 9 }),
+  Object.freeze({ id: "mix", label: "MIX", through: 16 }),
+  Object.freeze({ id: "use", label: "USE", through: SESSION_ROUNDS }),
+]);
+
+/** A first-listen answer this much slower than the learner's own baseline reads as slow. */
+export const SLOW_FACTOR = 1.6;
+
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+
+/**
+ * Retention scheduling. Same-session repetition cannot buy a long-term
+ * interval: a character only moves up this ladder when a review that was
+ * genuinely due comes back clean, so the unit of progress is a real elapsed
+ * gap rather than a run of answers in one sitting.
+ */
+export const STAB_INTERVALS = Object.freeze([
+  0,
+  20 * HOUR,
+  3 * DAY,
+  7 * DAY,
+  14 * DAY,
+  30 * DAY,
+  60 * DAY,
+]);
+export const MAX_STAB = 6;
+/** Two successes have to straddle at least this long before a letter graduates. */
+export const ACQ_MIN_GAP = 3 * 60 * 1000;
+/** Where a lapse, or a review that was held back, is put back in the queue. */
+export const SHORT_FOLLOWUP = 10 * 60 * 1000;
+/** Above this a response is an interruption, not a slow answer. */
+export const RT_CAP = 10000;
+/** With fewer than five clean samples the learner has no measured pace yet. */
+export const DEFAULT_BASELINE_MS = 2600;
+/** Clean first-listen response times kept per letter and pooled. */
+export const RT_WINDOW = 8;
+export const RT_LOG_CAP = 40;
+/** Confusions and their cures both decay; lapses decay more slowly. */
+export const CONF_HALFLIFE = 7 * DAY;
+export const LAPSE_HALFLIFE = 14 * DAY;
+export const CONF_LIVE = 0.35;
+export const PAIR_LIST_CAP = 24;
+export const LAPSE_CAP = 12;
+/** Append-only attempt log. Retention is counted from it, never from counters. */
+export const EVENT_CAP = 4000;
+/** Sends kept for the aggregate band, and how many are needed to call one. */
+export const SEND_LOG_CAP = 40;
+export const SEND_BAND_WINDOW = 8;
+export const SEND_BAND_MIN = 5;
+
+/**
+ * Spacing adapts, characters never do. Missing group rounds widens the gaps
+ * between characters; a run of clean ones walks the offset back toward the
+ * preset the learner chose.
+ */
+export const SPACING_STEP = 2;
+export const SPACING_MISS_STREAK = 2;
+export const SPACING_CLEAN_STREAK = 5;
+export const MIN_EFFECTIVE_WPM = 6;

@@ -18,10 +18,9 @@
     />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./styles/foundation.css" />
-    <link rel="stylesheet" href="./styles/onboarding.css" />
+    <link rel="stylesheet" href="./styles/guide.css" />
     <link rel="stylesheet" href="./styles/trainer.css" />
     <link rel="stylesheet" href="./styles/themes.css" />
-    <link rel="stylesheet" href="./styles/signal-lab.css" />
     <link rel="stylesheet" href="./styles/responsive.css" />
     <link rel="stylesheet" href="./styles/accessibility.css" />
     <script type="module" src="./src/app.js"></script>
@@ -30,192 +29,37 @@
     <a class="skip-link" href="#trainer">Skip to trainer</a>
 
     <header class="app-bar">
-      <div class="app-identity" aria-label="Morse Trainer">
+      <div class="app-identity">
         <span class="identity-signal" aria-hidden="true">· — ·</span>
-        <div>
-          <strong>Morse Trainer</strong>
-          <span>Three machines. One learning system.</span>
-        </div>
+        <strong>Morse Trainer</strong>
       </div>
 
-      <button class="guide-button" type="button" id="guideButton">
+      <div class="segmented-control mode-control" id="modeControl" role="group" aria-label="Practice mode">
+        <button type="button" data-mode="learn" aria-pressed="true">Learn</button>
+        <button type="button" data-mode="sprint" aria-pressed="false" aria-disabled="true">Sprint</button>
+        <button type="button" data-mode="send" aria-pressed="false">Send</button>
+      </div>
+
+      <button
+        class="icon-button"
+        type="button"
+        id="settingsButton"
+        popovertarget="settingsPanel"
+        aria-label="Settings"
+        aria-expanded="false"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 17h.01M9.1 9a3 3 0 1 1 4.83 2.37c-1.1.82-1.93 1.35-1.93 2.63" />
-          <circle cx="12" cy="12" r="9" />
+          <path d="M4 7h5M15 7h5M4 17h9M19 17h1" />
+          <circle cx="12" cy="7" r="2.4" />
+          <circle cx="16" cy="17" r="2.4" />
         </svg>
-        <span>How it works</span>
-        <small>3 steps</small>
       </button>
-
-      <div class="toolbar" aria-label="Trainer controls">
-        <div class="control-set" aria-label="Practice path">
-          <span class="control-label">Practice path</span>
-          <div class="segmented-control" id="modeControl">
-            <button type="button" data-mode="learn" aria-pressed="false">Learn</button>
-            <button type="button" data-mode="drill" aria-pressed="true">Drill</button>
-            <button type="button" data-mode="sprint" aria-pressed="false">Sprint</button>
-          </div>
-        </div>
-
-        <div class="control-set" aria-label="Machine theme">
-          <span class="control-label">Machine theme</span>
-          <div class="segmented-control theme-control" id="themeControl">
-            <button type="button" data-theme-choice="terminal" aria-pressed="true">
-              <span class="theme-dot terminal-dot" aria-hidden="true"></span>Terminal
-            </button>
-            <button type="button" data-theme-choice="teletext" aria-pressed="false">
-              <span class="theme-dot teletext-dot" aria-hidden="true"></span>Teletext
-            </button>
-            <button type="button" data-theme-choice="pocket" aria-pressed="false">
-              <span class="theme-dot pocket-dot" aria-hidden="true"></span>Pocket
-            </button>
-          </div>
-        </div>
-
-        <div class="speed-control speed-picker" id="speedPicker">
-          <span class="control-label" id="speedLabel">Signal speed</span>
-          <button
-            class="speed-trigger"
-            type="button"
-            id="speedTrigger"
-            popovertarget="speedMenu"
-            aria-haspopup="listbox"
-            aria-expanded="false"
-            aria-labelledby="speedLabel speedValue"
-          >
-            <span class="speed-trigger-copy">
-              <strong id="speedValue">Steady</strong>
-              <small id="speedMeta">13 WPM · recommended</small>
-            </span>
-            <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true">
-              <path d="m5 7.5 5 5 5-5" />
-            </svg>
-          </button>
-          <div class="speed-menu" id="speedMenu" popover="auto" role="listbox" aria-labelledby="speedLabel">
-            <button type="button" role="option" data-difficulty="gentle" aria-selected="false" tabindex="-1">
-              <span><strong>Gentle</strong><small>Hear every element clearly</small></span>
-              <span class="speed-wpm">8 WPM</span>
-            </button>
-            <button type="button" role="option" data-difficulty="steady" aria-selected="true" tabindex="0">
-              <span><strong>Steady</strong><small>The best place to begin</small></span>
-              <span class="speed-wpm">13 WPM</span>
-            </button>
-            <button type="button" role="option" data-difficulty="brisk" aria-selected="false" tabindex="-1">
-              <span><strong>Brisk</strong><small>Build recognition speed</small></span>
-              <span class="speed-wpm">20 WPM</span>
-            </button>
-          </div>
-        </div>
-      </div>
     </header>
 
     <main class="app-main" id="trainer" tabindex="-1">
       <h1 class="visually-hidden">Morse Trainer learning console</h1>
 
-      <section class="onboarding" id="onboarding" aria-label="Getting started with Morse Trainer">
-        <div class="onboarding-progress" aria-label="Getting started progress">
-          <span data-progress-step="1"><b>1</b> Hear</span>
-          <span data-progress-step="2"><b>2</b> Choose</span>
-          <span data-progress-step="3"><b>3</b> Start</span>
-        </div>
-
-        <div class="onboarding-step" data-onboarding-step="1">
-          <div class="onboarding-copy">
-            <p class="onboarding-context">Your first minute</p>
-            <h2 id="onboardingTitle">Turn a signal into something you can recognize.</h2>
-            <p>Morse is rhythm, not a string of marks to count. Start by hearing one useful pattern and watching its shape move with the sound.</p>
-            <div class="onboarding-actions">
-              <button class="quiet-action" type="button" data-skip-onboarding>Explore on my own</button>
-              <button class="onboarding-next" type="button" data-onboarding-next>Choose my path</button>
-            </div>
-          </div>
-
-          <button class="first-signal" type="button" id="firstSignalButton" aria-label="Play the Morse signal for A, dot dash">
-            <span class="first-signal-state" id="firstSignalState">Tap to hear your first signal</span>
-            <span class="first-signal-pattern" id="firstSignalPattern" aria-hidden="true">
-              <i data-symbol="."></i><i class="dash" data-symbol="-"></i>
-            </span>
-            <span class="first-signal-answer">
-              <strong>A</strong>
-              <span><b>di-dah</b><small>short, then long</small></span>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5V7Z" /></svg>
-            </span>
-          </button>
-        </div>
-
-        <div class="onboarding-step" data-onboarding-step="2" hidden>
-          <div class="onboarding-copy compact">
-            <p class="onboarding-context">Pick your goal</p>
-            <h2>What would feel useful today?</h2>
-            <p>You can switch paths at any time. Your session and machine theme stay with you.</p>
-          </div>
-          <div class="path-picker" role="group" aria-label="Starting practice path">
-            <button type="button" data-onboarding-mode="learn" aria-pressed="true">
-              <span class="choice-index">01</span>
-              <span><strong>Learn from zero</strong><small>See, hear, and remember one letter at a time.</small></span>
-              <span class="choice-time">2–5 min</span>
-            </button>
-            <button type="button" data-onboarding-mode="drill" aria-pressed="false">
-              <span class="choice-index">02</span>
-              <span><strong>Build recall</strong><small>Hear a signal, choose the letter, get instant feedback.</small></span>
-              <span class="choice-time">5 min</span>
-            </button>
-            <button type="button" data-onboarding-mode="sprint" aria-pressed="false">
-              <span class="choice-index">03</span>
-              <span><strong>Test my speed</strong><small>Decode as many letters as you can in 30 seconds.</small></span>
-              <span class="choice-time">30 sec</span>
-            </button>
-          </div>
-          <div class="onboarding-actions spread">
-            <button class="quiet-action" type="button" data-onboarding-back>Back</button>
-            <button class="onboarding-next" type="button" data-onboarding-next>Choose a machine</button>
-          </div>
-        </div>
-
-        <div class="onboarding-step" data-onboarding-step="3" hidden>
-          <div class="onboarding-copy compact">
-            <p class="onboarding-context">Make it yours</p>
-            <h2>Choose the machine you want to learn on.</h2>
-            <p>All three are the same trainer underneath. Changing the look never resets your progress.</p>
-          </div>
-          <div class="onboarding-themes" role="group" aria-label="Starting machine theme">
-            <button class="theme-preview terminal-preview" type="button" data-onboarding-theme="terminal" aria-pressed="true">
-              <span class="preview-screen"><i>· —</i><b>&gt; READY_</b></span>
-              <span><strong>Amber Terminal</strong><small>Focused phosphor console</small></span>
-            </button>
-            <button class="theme-preview teletext-preview" type="button" data-onboarding-theme="teletext" aria-pressed="false">
-              <span class="preview-screen"><i>· —</i><b>MORSE 404</b></span>
-              <span><strong>Broadcast Teletext</strong><small>Bold page-color blocks</small></span>
-            </button>
-            <button class="theme-preview pocket-preview" type="button" data-onboarding-theme="pocket" aria-pressed="false">
-              <span class="preview-screen"><i>· —</i><b>CW-83</b></span>
-              <span><strong>Pocket Trainer</strong><small>Tactile desk instrument</small></span>
-            </button>
-          </div>
-          <div class="onboarding-actions spread">
-            <button class="quiet-action" type="button" data-onboarding-back>Back</button>
-            <button class="onboarding-next launch-action" type="button" id="finishOnboarding">Start my first session</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="coach-strip" aria-label="How the selected practice path works">
-        <div class="coach-intro">
-          <span id="coachMode">Learn path</span>
-          <strong id="coachTitle">Build one clean sound-to-letter connection.</strong>
-        </div>
-        <ol class="coach-steps" id="coachSteps">
-          <li><b>1</b><span>Hear it</span></li>
-          <li><b>2</b><span>See the shape</span></li>
-          <li><b>3</b><span>Move on</span></li>
-        </ol>
-        <p class="coach-note">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 4v6M17 4v6M6 14h12v6H6z" /></svg>
-          <span><strong>Theme-safe progress</strong> Change machines whenever you like—your session stays put.</span>
-        </p>
-      </section>
-
-      <section class="machine" id="machine" data-theme="terminal" aria-labelledby="machineTitle" tabindex="-1">
+      <section class="machine" id="machine" aria-labelledby="machineTitle" tabindex="-1">
         <div class="teletext-bars" aria-hidden="true">
           <span></span><span></span><span></span><span></span>
         </div>
@@ -225,43 +69,56 @@
             <span id="machineTitle">MORSE TRAINER v1.4</span>
             <span id="machineSubtitle">AMBER TERMINAL · SET 04</span>
           </div>
-          <dl class="session-stats" aria-label="Session statistics">
-            <div><dt>Speed</dt><dd id="speedStat">13 WPM</dd></div>
+          <dl class="session-stats" aria-label="Session">
+            <div>
+              <dt id="primaryStatLabel">Letters</dt>
+              <dd id="primaryStat">2 / 10</dd>
+              <span class="session-rail-row">
+                <span class="session-rail" id="sessionRail" aria-hidden="true">
+                  <i data-phase="arrive"></i><i data-phase="repair"></i><i data-phase="new"></i><i data-phase="mix"></i><i data-phase="use"></i>
+                </span>
+                <small class="session-phase" id="sessionPhase" aria-hidden="true">ARRIVE</small>
+              </span>
+            </div>
             <div><dt>Accuracy</dt><dd id="accuracyStat">—</dd></div>
             <div><dt>Streak</dt><dd id="streakStat">0</dd></div>
           </dl>
         </header>
 
         <div class="machine-content">
-          <aside class="roster-panel" aria-labelledby="rosterTitle">
-            <div class="roster-heading">
-              <span id="rosterTitle">Starter alphabet</span>
-              <span>Set 04</span>
+          <aside class="letters" id="letters" aria-label="Letters" tabindex="-1">
+            <div class="letters-head">
+              <strong id="lettersCount">Letters · 2 / 10</strong>
+              <small id="lettersNext">Next unlock · 0 of 10 right</small>
+              <small class="letters-caption">Brighter signals will last longer.</small>
             </div>
-            <ol class="roster" id="roster"></ol>
-            <div class="roster-footer">
-              <span>Session</span>
-              <strong id="sessionScore">0 / 0 correct</strong>
-              <span id="bestScore">Best sprint · 0</span>
+            <ol class="letters-list" id="lettersList"></ol>
+            <div class="letters-foot">
+              <span>Score <strong id="sessionScore">0 / 0</strong></span>
+              <span id="bestScore" hidden>Best 0</span>
             </div>
           </aside>
 
           <section class="practice-stage" aria-label="Morse practice">
-            <div class="learn-view" id="learnView" hidden>
-              <div class="lesson-meta">
-                <span id="lessonStep">Lesson 1 of 10</span>
-                <span id="lessonPatternText">·</span>
+            <div class="intro-card" id="introCard" hidden>
+              <span class="intro-tag">New letter</span>
+              <div class="intro-core">
+                <strong class="intro-letter" id="introLetter">R</strong>
+                <div class="intro-signal" id="introSignal" aria-hidden="true"></div>
               </div>
-              <div class="lesson-core">
-                <strong class="lesson-letter" id="lessonLetter">E</strong>
-                <div class="lesson-signal" id="lessonSignal" aria-hidden="true"></div>
+              <p class="intro-spoken" id="introSpoken">di-dah-dit</p>
+              <p class="intro-note" id="introNote"></p>
+              <div class="intro-actions">
+                <button class="secondary-action" type="button" id="introHear">Hear it</button>
+                <button class="primary-action" type="button" id="introGotIt">Got it</button>
               </div>
-              <p class="lesson-spoken" id="lessonSpoken">di</p>
-              <p class="lesson-note" id="lessonNote"></p>
-              <div class="lesson-actions">
-                <button class="secondary-action" type="button" id="previousLesson">Previous</button>
-                <button class="primary-action" type="button" id="hearLesson">Hear it</button>
-                <button class="primary-action" type="button" id="nextLesson">Next letter</button>
+            </div>
+
+            <div class="intro-card session-card" id="sessionCard" hidden>
+              <span class="intro-tag">Session done</span>
+              <p class="session-sentence" id="sessionSentence"></p>
+              <div class="intro-actions">
+                <button class="primary-action" type="button" id="sessionContinue">Keep going</button>
               </div>
             </div>
 
@@ -277,207 +134,203 @@
               </div>
               <p class="status-line" id="statusLine">Listening</p>
               <button class="signal-button" type="button" id="signalButton" aria-label="Replay the current Morse signal">
-                <span class="signal-text" id="signalText">·</span>
+                <span class="signal-text" id="signalText"></span>
                 <span class="signal-bars" id="signalBars" aria-hidden="true"></span>
                 <span class="replay-copy">Replay signal</span>
               </button>
               <div class="decode-line" aria-label="Your answer">
                 <span>Decode</span>
-                <strong id="typedAnswer">_</strong>
+                <strong id="typedAnswer"><span class="typed-slot empty">_</span></strong>
                 <span class="cursor" aria-hidden="true"></span>
               </div>
               <div class="practice-actions">
                 <button class="secondary-action" type="button" id="replayButton">Replay</button>
-                <button class="primary-action" type="button" id="mainAction">Hint</button>
+                <button class="primary-action" type="button" id="mainAction">Show hint</button>
+              </div>
+            </div>
+
+            <div class="send-view" id="sendView" hidden>
+              <p class="status-line" id="sendStatus" aria-live="polite">Hear the target, then send it back</p>
+              <div class="send-target">
+                <strong id="sendTargetLabel">Target · 1 mark</strong>
+                <button class="text-action" type="button" id="sendReplay">Hear target</button>
+              </div>
+              <button
+                class="send-pad"
+                type="button"
+                id="sendPad"
+                aria-label="Morse paddle. Tap for a dot or hold for a dash."
+              >
+                <span>Tap / hold</span>
+                <small>Space works too</small>
+              </button>
+              <div class="send-readout" id="sendSequence" aria-label="No marks recorded yet"></div>
+              <div class="send-feedback">
+              <div class="send-trace" id="sendTrace" hidden>
+                <div class="trace-row">
+                  <span class="trace-label">Dot</span>
+                  <span class="trace-bars" aria-hidden="true"><i class="trace-you"></i><i class="trace-ideal"></i></span>
+                  <small class="trace-note" data-trace="dot"></small>
+                </div>
+                <div class="trace-row">
+                  <span class="trace-label">Dash</span>
+                  <span class="trace-bars" aria-hidden="true"><i class="trace-you"></i><i class="trace-ideal"></i></span>
+                  <small class="trace-note" data-trace="dash"></small>
+                </div>
+                <div class="trace-row">
+                  <span class="trace-label">Gap</span>
+                  <span class="trace-bars" aria-hidden="true"><i class="trace-you"></i><i class="trace-ideal"></i></span>
+                  <small class="trace-note" data-trace="gap"></small>
+                </div>
+              </div>
+                <small class="trace-band" id="sendBand"></small>
+              </div>
+              <div class="decode-line" aria-label="Target letter">
+                <span>Decode</span>
+                <strong id="sendDecode">_</strong>
+              </div>
+              <div class="send-actions">
+                <button class="secondary-action" type="button" id="sendClear" disabled>Clear</button>
+                <button class="primary-action" type="button" id="sendCheck" disabled>Check</button>
               </div>
             </div>
 
             <div class="answer-deck" id="answerDeck">
-              <div class="answer-heading">
-                <span>Answer keys</span>
-                <span id="answerHint">Tap or press A–Z</span>
-              </div>
               <div class="answer-grid" id="answerGrid"></div>
             </div>
           </section>
         </div>
 
         <footer class="machine-footer">
-          <span id="footerMode">DRILL MODE</span>
-          <span class="keyboard-help">Space · replay&nbsp;&nbsp; A–Z · answer&nbsp;&nbsp; Enter · hint/start</span>
+          <button class="letters-toggle" type="button" id="lettersToggle" aria-expanded="false" aria-controls="letters">
+            Letters
+          </button>
+          <span id="footerMode">LEARN</span>
+          <span class="keyboard-help" id="keyboardHelp">Space · replay&nbsp;&nbsp; A–Z · answer&nbsp;&nbsp; Enter · hint</span>
           <span id="footerResult">0 OK</span>
         </footer>
       </section>
-
-      <section class="signal-lab" id="signalLab" data-theme="terminal" aria-labelledby="signalLabTitle">
-        <header class="signal-lab-header">
-          <div class="signal-lab-heading">
-            <p>Adaptive practice</p>
-            <h2 id="signalLabTitle">Signal Lab</h2>
-            <span>Hear how you learn, not just how many you get right.</span>
-          </div>
-          <div class="lab-profile-status" aria-label="Recognition profile status">
-            <span id="profileStatus">Profile warming up</span>
-            <strong id="labAttemptSummary">No signals logged yet</strong>
-          </div>
-        </header>
-
-        <div class="lab-tabs" role="tablist" aria-label="Signal Lab tools">
-          <button
-            type="button"
-            id="labTabMirror"
-            role="tab"
-            aria-selected="true"
-            aria-controls="labPanelMirror"
-            data-lab-view="mirror"
-            tabindex="0"
-          >
-            <span>Echo Mirror</span>
-            <small>Send the rhythm back</small>
-          </button>
-          <button
-            type="button"
-            id="labTabFingerprint"
-            role="tab"
-            aria-selected="false"
-            aria-controls="labPanelFingerprint"
-            data-lab-view="fingerprint"
-            tabindex="-1"
-          >
-            <span>Fingerprint</span>
-            <small>See recognition patterns</small>
-          </button>
-          <button
-            type="button"
-            id="labTabClinic"
-            role="tab"
-            aria-selected="false"
-            aria-controls="labPanelClinic"
-            data-lab-view="clinic"
-            tabindex="-1"
-          >
-            <span>Confusion Clinic</span>
-            <small>Train the tricky pair</small>
-          </button>
-        </div>
-
-        <div class="lab-stage">
-          <section
-            class="lab-panel mirror-panel"
-            id="labPanelMirror"
-            role="tabpanel"
-            aria-labelledby="labTabMirror"
-            data-lab-panel="mirror"
-          >
-            <div class="lab-panel-copy">
-              <p class="lab-eyebrow">01 · Listen → transmit</p>
-              <h3>Hear it. Send it back.</h3>
-              <p>Listen without looking, then use one key like a real Morse paddle: tap for a dot, hold for a dash.</p>
-              <div class="mirror-target">
-                <span>Echo target</span>
-                <strong id="mirrorTargetLabel">Mystery signal · 1 mark</strong>
-                <button class="lab-text-action" type="button" id="mirrorReplay">Hear target</button>
-              </div>
-            </div>
-
-            <div class="mirror-workbench">
-              <div class="mirror-readout">
-                <span>Your transmission</span>
-                <div class="mirror-sequence" id="mirrorSequence" aria-label="No marks recorded yet"></div>
-                <small id="mirrorGuide">Tap for dot · hold for dash</small>
-              </div>
-
-              <button
-                class="mirror-pad"
-                type="button"
-                id="mirrorPad"
-                aria-describedby="mirrorGuide"
-                aria-label="Morse paddle. Tap for a dot or hold for a dash."
-              >
-                <span>Tap / hold</span>
-                <small>Space works too</small>
-              </button>
-
-              <div class="mirror-actions">
-                <button class="lab-secondary-action" type="button" id="mirrorClear" disabled>Clear</button>
-                <button class="lab-primary-action" type="button" id="mirrorCheck" disabled>Check signal</button>
-              </div>
-              <p class="mirror-result" id="mirrorResult" aria-live="polite">Hear the target, then repeat its rhythm.</p>
-            </div>
-          </section>
-
-          <section
-            class="lab-panel fingerprint-panel"
-            id="labPanelFingerprint"
-            role="tabpanel"
-            aria-labelledby="labTabFingerprint"
-            data-lab-panel="fingerprint"
-            hidden
-          >
-            <div class="lab-panel-copy">
-              <p class="lab-eyebrow">02 · Recognition profile</p>
-              <h3>Your hearing has a shape.</h3>
-              <p id="fingerprintSummary">Complete three practice signals to reveal which letters feel instant and which need another listen.</p>
-              <div class="fingerprint-actions">
-                <button class="lab-primary-action" type="button" id="fingerprintStart">Start a drill</button>
-                <button class="lab-text-action" type="button" id="fingerprintReset" hidden>Reset profile</button>
-              </div>
-            </div>
-            <div class="fingerprint-data" id="fingerprintData">
-              <div class="lab-empty-state" id="fingerprintEmpty">
-                <span aria-hidden="true">· — ·</span>
-                <strong>Nothing to diagnose yet</strong>
-                <p>Accuracy alone hides the interesting part. After three answers, response time joins the picture.</p>
-                <small id="fingerprintProgress">0 of 3 signals logged</small>
-              </div>
-              <div class="fingerprint-table" id="fingerprintTable" hidden>
-                <div class="fingerprint-table-heading" aria-hidden="true">
-                  <span>Letter</span><span>Recognition</span><span>Accuracy</span><span>Avg. response</span>
-                </div>
-                <ol id="fingerprintRows" aria-label="Recognition fingerprint by letter"></ol>
-              </div>
-            </div>
-          </section>
-
-          <section
-            class="lab-panel clinic-panel"
-            id="labPanelClinic"
-            role="tabpanel"
-            aria-labelledby="labTabClinic"
-            data-lab-panel="clinic"
-            hidden
-          >
-            <div class="lab-panel-copy">
-              <p class="lab-eyebrow">03 · Adaptive contrast</p>
-              <h3>Practice the difference.</h3>
-              <p>The clinic finds the two signals your ear is blending together, then turns them into a focused contrast drill.</p>
-            </div>
-
-            <div class="clinic-state" id="clinicEmpty">
-              <div class="clinic-progress" aria-hidden="true"><span id="clinicProgressBar"></span></div>
-              <strong>Let the trainer catch a useful pattern</strong>
-              <p>Two misses are enough to open the clinic. Mistakes are treated as direction, never as a penalty.</p>
-              <small id="clinicProgressText">0 of 2 useful misses collected</small>
-              <button class="lab-primary-action" type="button" id="clinicStartDrill">Build my profile</button>
-            </div>
-
-            <div class="clinic-state clinic-ready" id="clinicReady" hidden>
-              <span class="clinic-label">Most useful contrast</span>
-              <div class="clinic-pair" aria-label="Most confused Morse pair">
-                <div><strong id="clinicTargetLetter">A</strong><span id="clinicTargetPattern">· —</span><small>You heard</small></div>
-                <span class="clinic-arrow" aria-hidden="true">→</span>
-                <div><strong id="clinicAnswerLetter">N</strong><span id="clinicAnswerPattern">— ·</span><small>You chose</small></div>
-              </div>
-              <p id="clinicInsight">These signals have reversed timing. Contrast practice will make the order easier to hear.</p>
-              <div class="clinic-actions">
-                <button class="lab-primary-action" type="button" id="clinicPractice">Practice this pair</button>
-                <button class="lab-secondary-action" type="button" id="clinicExit" hidden>Return to full set</button>
-              </div>
-            </div>
-          </section>
-        </div>
-      </section>
     </main>
+
+    <div class="settings-panel" id="settingsPanel" popover="auto" aria-label="Settings">
+      <div class="settings-group">
+        <span class="settings-label" id="machineGroupLabel">Machine</span>
+        <div class="machine-picker" role="group" aria-labelledby="machineGroupLabel">
+          <button class="theme-preview" type="button" data-theme-choice="terminal" data-theme-tokens="terminal" aria-pressed="true">
+            <span class="preview-screen"><i>· —</i><b>&gt; READY_</b></span>
+            <strong>Terminal</strong>
+          </button>
+          <button class="theme-preview" type="button" data-theme-choice="teletext" data-theme-tokens="teletext" aria-pressed="false">
+            <span class="preview-screen"><i>· —</i><b>MORSE 404</b></span>
+            <strong>Teletext</strong>
+          </button>
+          <button class="theme-preview" type="button" data-theme-choice="pocket" data-theme-tokens="pocket" aria-pressed="false">
+            <span class="preview-screen"><i>· —</i><b>CW-83</b></span>
+            <strong>Pocket</strong>
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <span class="settings-label" id="speedGroupLabel">Speed</span>
+        <div class="segmented-control speed-segments" role="group" aria-labelledby="speedGroupLabel">
+          <button type="button" data-difficulty="gentle" aria-pressed="false">
+            <strong>Gentle</strong><small>18 wpm · wide gaps</small>
+          </button>
+          <button type="button" data-difficulty="steady" aria-pressed="true">
+            <strong>Steady</strong><small>22 wpm</small>
+          </button>
+          <button type="button" data-difficulty="brisk" aria-pressed="false">
+            <strong>Brisk</strong><small>25 wpm · tight gaps</small>
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <button class="text-button" type="button" id="showGuide">Show guide</button>
+        <button class="text-button" type="button" id="resetProgress">Reset progress</button>
+      </div>
+    </div>
+
+    <div class="sheet-scrim" id="sheetScrim" hidden></div>
+
+    <dialog class="guide" id="guide" data-direction="forward" aria-label="Getting started with Morse Trainer">
+      <div class="guide-head">
+        <div class="guide-dots" aria-hidden="true">
+          <span data-guide-dot="1" data-state="active"></span>
+          <span data-guide-dot="2" data-state="upcoming"></span>
+          <span data-guide-dot="3" data-state="upcoming"></span>
+        </div>
+        <button class="guide-skip" type="button" data-guide-skip>Skip</button>
+      </div>
+
+      <div class="guide-step" data-guide-step="1">
+        <h2>Hear your first letter</h2>
+        <button class="first-signal" type="button" id="firstSignalButton" aria-label="Play the Morse signal for A, dot dash">
+          <span class="first-signal-pattern" id="firstSignalPattern" aria-hidden="true">
+            <i data-symbol="."></i><i class="dash" data-symbol="-"></i>
+          </span>
+          <strong>A</strong>
+          <small>di-dah</small>
+        </button>
+        <p class="guide-caption" id="firstSignalState">Tap to play</p>
+        <div class="guide-footer">
+          <button class="guide-next" type="button" data-guide-next>Next</button>
+        </div>
+      </div>
+
+      <div class="guide-step" data-guide-step="2" hidden>
+        <h2>Pick a rhythm</h2>
+        <p class="guide-caption">Clear, but not slow enough to count.</p>
+        <div class="rhythm-cards" role="group" aria-label="Signal rhythm">
+          <div class="rhythm-card">
+            <button class="rhythm-select" type="button" data-guide-speed="gentle" aria-pressed="false">
+              <strong>Gentle</strong><small>18 wpm</small>
+            </button>
+            <button class="rhythm-hear" type="button" data-guide-hear="gentle">Hear it</button>
+          </div>
+          <div class="rhythm-card">
+            <button class="rhythm-select" type="button" data-guide-speed="steady" aria-pressed="true">
+              <strong>Steady</strong><small>22 wpm</small>
+            </button>
+            <button class="rhythm-hear" type="button" data-guide-hear="steady">Hear it</button>
+          </div>
+          <div class="rhythm-card">
+            <button class="rhythm-select" type="button" data-guide-speed="brisk" aria-pressed="false">
+              <strong>Brisk</strong><small>25 wpm</small>
+            </button>
+            <button class="rhythm-hear" type="button" data-guide-hear="brisk">Hear it</button>
+          </div>
+        </div>
+        <div class="guide-footer spread">
+          <button class="guide-quiet" type="button" data-guide-back>Back</button>
+          <button class="guide-next" type="button" data-guide-next>Next</button>
+        </div>
+      </div>
+
+      <div class="guide-step" data-guide-step="3" hidden>
+        <h2>Pick a machine</h2>
+        <div class="guide-themes" role="group" aria-label="Starting machine theme">
+          <button class="theme-preview" type="button" data-guide-theme="terminal" data-theme-tokens="terminal" aria-pressed="true">
+            <span class="preview-screen"><i>· —</i><b>&gt; READY_</b></span>
+            <strong>Terminal</strong>
+          </button>
+          <button class="theme-preview" type="button" data-guide-theme="teletext" data-theme-tokens="teletext" aria-pressed="false">
+            <span class="preview-screen"><i>· —</i><b>MORSE 404</b></span>
+            <strong>Teletext</strong>
+          </button>
+          <button class="theme-preview" type="button" data-guide-theme="pocket" data-theme-tokens="pocket" aria-pressed="false">
+            <span class="preview-screen"><i>· —</i><b>CW-83</b></span>
+            <strong>Pocket</strong>
+          </button>
+        </div>
+        <p class="guide-caption">Switch anytime — progress stays.</p>
+        <div class="guide-footer spread">
+          <button class="guide-quiet" type="button" data-guide-back>Back</button>
+          <button class="guide-next" type="button" id="finishGuide">Start</button>
+        </div>
+      </div>
+    </dialog>
 
     <p class="visually-hidden" id="liveStatus" aria-live="polite"></p>
   </body>
