@@ -301,6 +301,175 @@
           <span id="footerResult">0 OK</span>
         </footer>
       </section>
+
+      <section class="signal-lab" id="signalLab" data-theme="terminal" aria-labelledby="signalLabTitle">
+        <header class="signal-lab-header">
+          <div class="signal-lab-heading">
+            <p>Adaptive practice</p>
+            <h2 id="signalLabTitle">Signal Lab</h2>
+            <span>Hear how you learn, not just how many you get right.</span>
+          </div>
+          <div class="lab-profile-status" aria-label="Recognition profile status">
+            <span id="profileStatus">Profile warming up</span>
+            <strong id="labAttemptSummary">No signals logged yet</strong>
+          </div>
+        </header>
+
+        <div class="lab-tabs" role="tablist" aria-label="Signal Lab tools">
+          <button
+            type="button"
+            id="labTabMirror"
+            role="tab"
+            aria-selected="true"
+            aria-controls="labPanelMirror"
+            data-lab-view="mirror"
+            tabindex="0"
+          >
+            <span>Echo Mirror</span>
+            <small>Send the rhythm back</small>
+          </button>
+          <button
+            type="button"
+            id="labTabFingerprint"
+            role="tab"
+            aria-selected="false"
+            aria-controls="labPanelFingerprint"
+            data-lab-view="fingerprint"
+            tabindex="-1"
+          >
+            <span>Fingerprint</span>
+            <small>See recognition patterns</small>
+          </button>
+          <button
+            type="button"
+            id="labTabClinic"
+            role="tab"
+            aria-selected="false"
+            aria-controls="labPanelClinic"
+            data-lab-view="clinic"
+            tabindex="-1"
+          >
+            <span>Confusion Clinic</span>
+            <small>Train the tricky pair</small>
+          </button>
+        </div>
+
+        <div class="lab-stage">
+          <section
+            class="lab-panel mirror-panel"
+            id="labPanelMirror"
+            role="tabpanel"
+            aria-labelledby="labTabMirror"
+            data-lab-panel="mirror"
+          >
+            <div class="lab-panel-copy">
+              <p class="lab-eyebrow">01 · Listen → transmit</p>
+              <h3>Hear it. Send it back.</h3>
+              <p>Listen without looking, then use one key like a real Morse paddle: tap for a dot, hold for a dash.</p>
+              <div class="mirror-target">
+                <span>Echo target</span>
+                <strong id="mirrorTargetLabel">Mystery signal · 1 mark</strong>
+                <button class="lab-text-action" type="button" id="mirrorReplay">Hear target</button>
+              </div>
+            </div>
+
+            <div class="mirror-workbench">
+              <div class="mirror-readout">
+                <span>Your transmission</span>
+                <div class="mirror-sequence" id="mirrorSequence" aria-label="No marks recorded yet"></div>
+                <small id="mirrorGuide">Tap for dot · hold for dash</small>
+              </div>
+
+              <button
+                class="mirror-pad"
+                type="button"
+                id="mirrorPad"
+                aria-describedby="mirrorGuide"
+                aria-label="Morse paddle. Tap for a dot or hold for a dash."
+              >
+                <span>Tap / hold</span>
+                <small>Space works too</small>
+              </button>
+
+              <div class="mirror-actions">
+                <button class="lab-secondary-action" type="button" id="mirrorClear" disabled>Clear</button>
+                <button class="lab-primary-action" type="button" id="mirrorCheck" disabled>Check signal</button>
+              </div>
+              <p class="mirror-result" id="mirrorResult" aria-live="polite">Hear the target, then repeat its rhythm.</p>
+            </div>
+          </section>
+
+          <section
+            class="lab-panel fingerprint-panel"
+            id="labPanelFingerprint"
+            role="tabpanel"
+            aria-labelledby="labTabFingerprint"
+            data-lab-panel="fingerprint"
+            hidden
+          >
+            <div class="lab-panel-copy">
+              <p class="lab-eyebrow">02 · Recognition profile</p>
+              <h3>Your hearing has a shape.</h3>
+              <p id="fingerprintSummary">Complete three practice signals to reveal which letters feel instant and which need another listen.</p>
+              <div class="fingerprint-actions">
+                <button class="lab-primary-action" type="button" id="fingerprintStart">Start a drill</button>
+                <button class="lab-text-action" type="button" id="fingerprintReset" hidden>Reset profile</button>
+              </div>
+            </div>
+            <div class="fingerprint-data" id="fingerprintData">
+              <div class="lab-empty-state" id="fingerprintEmpty">
+                <span aria-hidden="true">· — ·</span>
+                <strong>Nothing to diagnose yet</strong>
+                <p>Accuracy alone hides the interesting part. After three answers, response time joins the picture.</p>
+                <small id="fingerprintProgress">0 of 3 signals logged</small>
+              </div>
+              <div class="fingerprint-table" id="fingerprintTable" hidden>
+                <div class="fingerprint-table-heading" aria-hidden="true">
+                  <span>Letter</span><span>Recognition</span><span>Accuracy</span><span>Avg. response</span>
+                </div>
+                <ol id="fingerprintRows" aria-label="Recognition fingerprint by letter"></ol>
+              </div>
+            </div>
+          </section>
+
+          <section
+            class="lab-panel clinic-panel"
+            id="labPanelClinic"
+            role="tabpanel"
+            aria-labelledby="labTabClinic"
+            data-lab-panel="clinic"
+            hidden
+          >
+            <div class="lab-panel-copy">
+              <p class="lab-eyebrow">03 · Adaptive contrast</p>
+              <h3>Practice the difference.</h3>
+              <p>The clinic finds the two signals your ear is blending together, then turns them into a focused contrast drill.</p>
+            </div>
+
+            <div class="clinic-state" id="clinicEmpty">
+              <div class="clinic-progress" aria-hidden="true"><span id="clinicProgressBar"></span></div>
+              <strong>Let the trainer catch a useful pattern</strong>
+              <p>Two misses are enough to open the clinic. Mistakes are treated as direction, never as a penalty.</p>
+              <small id="clinicProgressText">0 of 2 useful misses collected</small>
+              <button class="lab-primary-action" type="button" id="clinicStartDrill">Build my profile</button>
+            </div>
+
+            <div class="clinic-state clinic-ready" id="clinicReady" hidden>
+              <span class="clinic-label">Most useful contrast</span>
+              <div class="clinic-pair" aria-label="Most confused Morse pair">
+                <div><strong id="clinicTargetLetter">A</strong><span id="clinicTargetPattern">· —</span><small>You heard</small></div>
+                <span class="clinic-arrow" aria-hidden="true">→</span>
+                <div><strong id="clinicAnswerLetter">N</strong><span id="clinicAnswerPattern">— ·</span><small>You chose</small></div>
+              </div>
+              <p id="clinicInsight">These signals have reversed timing. Contrast practice will make the order easier to hear.</p>
+              <div class="clinic-actions">
+                <button class="lab-primary-action" type="button" id="clinicPractice">Practice this pair</button>
+                <button class="lab-secondary-action" type="button" id="clinicExit" hidden>Return to full set</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
     </main>
 
     <p class="visually-hidden" id="liveStatus" aria-live="polite"></p>
