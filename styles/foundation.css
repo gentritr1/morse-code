@@ -1,0 +1,451 @@
+@layer foundation {
+:root {
+  color-scheme: dark;
+  --shell-bg: oklch(0.11 0 0);
+  --shell-surface: oklch(0.16 0.006 250);
+  --shell-surface-raised: oklch(0.20 0.007 250);
+  --shell-border: oklch(0.32 0.008 250);
+  --shell-text: oklch(0.95 0.004 250);
+  --shell-muted: oklch(0.70 0.008 250);
+  --shell-accent: oklch(0.72 0.10 188);
+  --shell-accent-deep: oklch(0.40 0.07 188);
+  --focus: oklch(0.86 0.13 188);
+  --danger: oklch(0.70 0.18 25);
+  --success: oklch(0.78 0.15 145);
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --layer-base: 0;
+  --layer-sticky: 20;
+  --layer-dropdown: 40;
+  font-family: "Archivo", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 20rem;
+  background: var(--shell-bg);
+}
+
+body {
+  min-width: 20rem;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  background: var(--shell-bg);
+  color: var(--shell-text);
+  line-height: 1.5;
+}
+
+button {
+  font: inherit;
+  touch-action: manipulation;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.skip-link {
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--layer-sticky);
+  padding: var(--space-3) var(--space-4);
+  background: var(--shell-accent);
+  color: oklch(0.13 0.025 188);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.app-bar {
+  position: relative;
+  width: min(100%, 96rem);
+  margin: 0 auto;
+  padding: max(var(--space-4), env(safe-area-inset-top)) max(var(--space-5), env(safe-area-inset-right)) var(--space-4) max(var(--space-5), env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  border-bottom: 1px solid var(--shell-border);
+}
+
+.guide-button {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--shell-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--shell-text);
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: color 180ms var(--ease-out), background-color 180ms var(--ease-out), border-color 180ms var(--ease-out), transform 140ms var(--ease-out);
+}
+
+.guide-button svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: none;
+  stroke: var(--shell-accent);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.guide-button small {
+  color: var(--shell-muted);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.guide-button:hover {
+  border-color: var(--shell-accent-deep);
+  background: var(--shell-surface-raised);
+}
+
+.guide-button:active {
+  transform: scale(0.97);
+}
+
+.app-identity {
+  min-width: 14rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.identity-signal {
+  color: var(--shell-accent);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 1.125rem;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.app-identity div {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-identity strong {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.app-identity div > span {
+  color: var(--shell-muted);
+  font-size: 0.875rem;
+}
+
+.toolbar {
+  flex: 1;
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.control-set,
+.speed-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.control-label {
+  color: var(--shell-muted);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+  line-height: 1.2;
+}
+
+.segmented-control {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  padding: var(--space-1);
+  border: 1px solid var(--shell-border);
+  border-radius: var(--radius-md);
+  background: var(--shell-surface);
+}
+
+.segmented-control button {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--shell-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 180ms var(--ease-out), background-color 180ms var(--ease-out);
+}
+
+.segmented-control button:hover {
+  color: var(--shell-text);
+  background: var(--shell-surface-raised);
+}
+
+.segmented-control button:active {
+  background: oklch(0.25 0.012 250);
+}
+
+.segmented-control button[aria-pressed="true"] {
+  background: var(--shell-accent-deep);
+  color: oklch(0.97 0.01 188);
+}
+
+.theme-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.theme-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.terminal-dot {
+  color: oklch(0.82 0.13 72);
+}
+
+.teletext-dot {
+  color: oklch(0.85 0.13 200);
+}
+
+.pocket-dot {
+  color: oklch(0.78 0.08 145);
+}
+
+.speed-picker {
+  --picker-accent: var(--shell-accent);
+  --picker-accent-deep: var(--shell-accent-deep);
+  position: relative;
+}
+
+.speed-picker[data-theme="terminal"] {
+  --picker-accent: oklch(0.82 0.13 72);
+  --picker-accent-deep: oklch(0.37 0.07 72);
+}
+
+.speed-picker[data-theme="teletext"] {
+  --picker-accent: oklch(0.85 0.13 200);
+  --picker-accent-deep: oklch(0.36 0.09 265);
+}
+
+.speed-picker[data-theme="pocket"] {
+  --picker-accent: oklch(0.78 0.08 145);
+  --picker-accent-deep: oklch(0.34 0.035 145);
+}
+
+.speed-trigger {
+  min-width: 12.75rem;
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 1px solid var(--shell-border);
+  border-radius: var(--radius-md);
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  text-align: left;
+  transition: border-color 180ms var(--ease-out), background-color 180ms var(--ease-out), transform 140ms var(--ease-out);
+}
+
+.speed-trigger:hover,
+.speed-trigger[aria-expanded="true"] {
+  border-color: var(--picker-accent);
+  background: var(--shell-surface-raised);
+}
+
+.speed-trigger:active {
+  transform: scale(0.98);
+}
+
+.speed-trigger-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.speed-trigger-copy strong {
+  font-size: 0.875rem;
+  line-height: 1.2;
+}
+
+.speed-trigger-copy small {
+  overflow: hidden;
+  color: var(--shell-muted);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: var(--picker-accent);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 180ms var(--ease-out);
+}
+
+.speed-trigger[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+.speed-menu {
+  position: fixed;
+  inset: unset;
+  top: var(--menu-top, 0);
+  left: var(--menu-left, 0);
+  z-index: var(--layer-dropdown);
+  width: var(--menu-width, 19rem);
+  margin: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--shell-border);
+  border-radius: var(--radius-md);
+  background: var(--shell-surface-raised);
+  color: var(--shell-text);
+  box-shadow: 0 8px 8px oklch(0 0 0 / 0.38);
+  opacity: 0;
+  transform: translateY(-0.25rem) scale(0.97);
+  transform-origin: top right;
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), overlay 180ms allow-discrete, display 180ms allow-discrete;
+}
+
+.speed-menu:popover-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@starting-style {
+  .speed-menu:popover-open {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.97);
+  }
+}
+
+.speed-menu::backdrop {
+  background: transparent;
+}
+
+.speed-menu button {
+  width: 100%;
+  min-height: 3.75rem;
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--shell-muted);
+  text-align: left;
+  transition: color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 140ms var(--ease-out);
+}
+
+.speed-menu button > span:first-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.speed-menu button strong {
+  color: var(--shell-text);
+  font-size: 0.875rem;
+}
+
+.speed-menu button small {
+  font-size: 0.75rem;
+}
+
+.speed-menu button:hover,
+.speed-menu button:focus-visible {
+  background: var(--shell-surface);
+  color: var(--shell-text);
+}
+
+.speed-menu button:active {
+  transform: scale(0.985);
+}
+
+.speed-menu button[aria-selected="true"] {
+  background: var(--picker-accent-deep);
+  color: oklch(0.97 0.008 188);
+}
+
+.speed-menu button[aria-selected="true"] strong,
+.speed-menu button[aria-selected="true"] .speed-wpm {
+  color: var(--picker-accent);
+}
+
+.speed-wpm {
+  flex: 0 0 auto;
+  color: var(--shell-text);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 0.75rem;
+}
+}

@@ -1,0 +1,562 @@
+@layer responsive {
+@media (max-width: 73.75rem) {
+  .app-bar {
+    align-items: flex-start;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .machine-content {
+    grid-template-columns: 14rem minmax(0, 1fr);
+  }
+
+  .practice-stage {
+    padding-inline: var(--space-5);
+  }
+
+  .coach-strip {
+    grid-template-columns: minmax(13rem, 0.8fr) minmax(20rem, 1.2fr);
+  }
+
+  .coach-note {
+    grid-column: 1 / -1;
+  }
+
+  .lab-panel {
+    grid-template-columns: minmax(15rem, 0.62fr) minmax(26rem, 1.38fr);
+    gap: var(--space-6);
+  }
+
+  .fingerprint-table-heading,
+  .fingerprint-table li {
+    grid-template-columns: 4rem minmax(8rem, 1fr) 5.5rem 7rem;
+  }
+}
+
+@media (max-width: 56.25rem) {
+  .app-bar {
+    flex-direction: column;
+    padding-right: max(var(--space-5), env(safe-area-inset-right));
+  }
+
+  .app-identity {
+    min-width: 0;
+    max-width: calc(100% - 10rem);
+  }
+
+  .toolbar {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .guide-button {
+    position: absolute;
+    top: max(var(--space-4), env(safe-area-inset-top));
+    right: max(var(--space-5), env(safe-area-inset-right));
+  }
+
+  .control-set {
+    flex: 1 1 18rem;
+  }
+
+  .speed-control {
+    flex: 1 1 11rem;
+  }
+
+  .speed-trigger {
+    width: 100%;
+  }
+
+  .segmented-control button {
+    flex: 1;
+  }
+
+  .machine-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .roster-panel {
+    display: none;
+  }
+
+  .answer-grid {
+    grid-template-columns: repeat(5, minmax(2.75rem, 1fr));
+  }
+
+  .machine[data-theme="pocket"] .practice-stage {
+    background: oklch(0.27 0.009 250);
+  }
+
+  .onboarding-step {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  .first-signal {
+    min-height: 15rem;
+  }
+
+  .coach-strip {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .coach-note {
+    grid-column: auto;
+  }
+
+  .signal-lab-header {
+    align-items: flex-start;
+  }
+
+  .lab-stage {
+    min-height: 0;
+    padding: var(--space-5);
+  }
+
+  .lab-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+
+  .lab-panel-copy {
+    max-width: none;
+  }
+
+  .lab-panel-copy h3 {
+    max-width: 18ch;
+  }
+
+  .mirror-target {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+  }
+}
+
+@media (max-width: 39.9375rem) {
+  .app-bar {
+    padding-inline: var(--space-3);
+    gap: var(--space-4);
+  }
+
+  .app-identity {
+    max-width: calc(100% - 8rem);
+  }
+
+  .app-identity div > span {
+    display: none;
+  }
+
+  .guide-button {
+    right: var(--space-3);
+  }
+
+  .guide-button small {
+    display: none;
+  }
+
+  .toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+  }
+
+  body[data-onboarding="open"] .toolbar {
+    display: none;
+  }
+
+  .control-set,
+  .speed-control {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .speed-trigger {
+    width: 100%;
+  }
+
+  .segmented-control {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .segmented-control button {
+    min-width: 0;
+    flex-basis: 5.75rem;
+    padding-inline: var(--space-2);
+    white-space: normal;
+  }
+
+  .theme-control button {
+    gap: var(--space-1);
+  }
+
+  .app-main {
+    padding: var(--space-3) var(--space-3) max(var(--space-6), env(safe-area-inset-bottom));
+  }
+
+  .onboarding {
+    padding: var(--space-4);
+  }
+
+  .onboarding-progress {
+    margin-bottom: var(--space-4);
+  }
+
+  .onboarding-progress span {
+    font-size: 0;
+  }
+
+  .onboarding-progress span b {
+    font-size: 0.75rem;
+  }
+
+  .onboarding-step {
+    min-height: 0;
+  }
+
+  .onboarding-copy h2,
+  .onboarding-copy.compact h2 {
+    max-width: none;
+    font-size: 1.75rem;
+    line-height: 1.08;
+  }
+
+  .onboarding-actions:not(.spread) {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .onboarding-actions button {
+    width: 100%;
+  }
+
+  .first-signal {
+    min-height: 13.5rem;
+    padding: var(--space-4);
+  }
+
+  .path-picker button {
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .choice-time {
+    display: none;
+  }
+
+  .onboarding-themes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .theme-preview {
+    display: grid;
+    grid-template-columns: 8rem minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .preview-screen {
+    min-height: 6rem;
+  }
+
+  .coach-strip {
+    padding: var(--space-3);
+  }
+
+  .signal-lab {
+    margin-top: var(--space-4);
+    border-radius: var(--radius-sm);
+  }
+
+  .signal-lab[data-theme="pocket"] {
+    padding: var(--space-1);
+  }
+
+  .signal-lab-header {
+    min-height: 0;
+    padding: var(--space-4);
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .lab-profile-status {
+    min-width: 0;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .lab-tabs button {
+    min-height: 3.5rem;
+    padding: var(--space-2);
+    align-items: center;
+    text-align: center;
+  }
+
+  .lab-tabs button small {
+    display: none;
+  }
+
+  .lab-stage {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .lab-panel {
+    gap: var(--space-5);
+  }
+
+  .lab-panel-copy h3 {
+    max-width: none;
+    font-size: 2.25rem;
+  }
+
+  .mirror-workbench {
+    padding: var(--space-3);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .mirror-pad {
+    grid-column: 1;
+    grid-row: auto;
+    min-height: 8.5rem;
+  }
+
+  .mirror-result {
+    grid-column: 1;
+  }
+
+  .mirror-actions button,
+  .clinic-actions button,
+  .fingerprint-actions .lab-primary-action {
+    flex: 1;
+  }
+
+  .fingerprint-table {
+    padding: var(--space-2);
+  }
+
+  .fingerprint-table-heading {
+    display: none;
+  }
+
+  .fingerprint-table li {
+    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+    gap: var(--space-2);
+  }
+
+  .fingerprint-time {
+    display: none;
+  }
+
+  .fingerprint-recognition {
+    grid-template-columns: minmax(4rem, auto) minmax(3rem, 1fr);
+    gap: var(--space-2);
+  }
+
+  .clinic-state,
+  .lab-empty-state {
+    min-height: 20rem;
+    padding: var(--space-4);
+  }
+
+  .clinic-pair {
+    gap: var(--space-2);
+  }
+
+  .clinic-pair div {
+    min-height: 7.5rem;
+    padding: var(--space-3);
+  }
+
+  .clinic-pair strong {
+    font-size: 2.25rem;
+  }
+
+  .coach-steps {
+    justify-content: flex-start;
+  }
+
+  .coach-steps li {
+    flex: 0 1 auto;
+  }
+
+  .coach-steps li::after {
+    width: 1.5rem;
+  }
+
+  .machine {
+    min-height: 42rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .machine-header {
+    min-height: 0;
+    padding: var(--space-3);
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .session-stats {
+    width: 100%;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .session-stats div {
+    text-align: left;
+  }
+
+  .practice-stage {
+    min-height: 32rem;
+    padding: var(--space-4) var(--space-3);
+    gap: var(--space-4);
+  }
+
+  .learn-view,
+  .practice-view {
+    min-height: 20rem;
+  }
+
+  .lesson-core {
+    min-height: 8rem;
+    gap: var(--space-5);
+  }
+
+  .lesson-letter {
+    font-size: 5rem;
+  }
+
+  .lesson-signal,
+  .signal-bars {
+    gap: var(--space-2);
+  }
+
+  .lesson-signal span,
+  .signal-bars span {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .lesson-signal span.dash,
+  .signal-bars span.dash {
+    width: 2.625rem;
+  }
+
+  .lesson-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .lesson-actions #previousLesson {
+    grid-column: 1 / -1;
+  }
+
+  .lesson-actions button,
+  .practice-actions button {
+    flex: 1;
+  }
+
+  .signal-button {
+    min-height: 7rem;
+    padding-inline: var(--space-2);
+  }
+
+  .signal-text {
+    font-size: 3.75rem;
+  }
+
+  .decode-line strong {
+    font-size: 3.25rem;
+  }
+
+  .cursor {
+    width: 0.625rem;
+    height: 2.5rem;
+  }
+
+  .answer-heading > :last-child {
+    display: none;
+  }
+
+  .answer-key {
+    min-height: 3rem;
+  }
+
+  .machine-footer {
+    padding-inline: var(--space-3);
+  }
+
+  .keyboard-help {
+    display: none;
+  }
+
+  .machine[data-theme="teletext"] .machine-identity > :first-child {
+    font-size: 1.75rem;
+  }
+
+  .machine[data-theme="teletext"] .session-stats dt,
+  .machine[data-theme="teletext"] .session-stats dd {
+    font-size: 1.125rem;
+  }
+
+  .machine[data-theme="teletext"] .signal-bars span,
+  .machine[data-theme="teletext"] .lesson-signal span {
+    width: 1.25rem;
+    height: 2rem;
+  }
+
+  .machine[data-theme="teletext"] .signal-bars span.dash,
+  .machine[data-theme="teletext"] .lesson-signal span.dash {
+    width: 3.75rem;
+  }
+
+  .machine[data-theme="teletext"] .decode-line strong {
+    font-size: 4.5rem;
+  }
+
+  .machine[data-theme="pocket"] {
+    padding: var(--space-2);
+  }
+
+  .machine[data-theme="pocket"] .machine-header {
+    padding: var(--space-3);
+  }
+
+  .machine[data-theme="pocket"] .practice-stage {
+    padding: var(--space-3);
+  }
+
+  .machine[data-theme="pocket"] .learn-view,
+  .machine[data-theme="pocket"] .practice-view {
+    padding: var(--space-4) var(--space-3);
+  }
+}
+
+@media (max-height: 43.75rem) and (orientation: landscape) {
+  .app-bar {
+    position: static;
+  }
+
+  .machine {
+    min-height: 34rem;
+  }
+
+  .practice-stage {
+    padding-block: var(--space-3);
+    gap: var(--space-3);
+  }
+
+  .learn-view,
+  .practice-view {
+    min-height: 16rem;
+  }
+
+  .signal-button {
+    min-height: 5rem;
+  }
+}
+}
