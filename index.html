@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="oklch(0.11 0 0)" />
+    <meta
+      name="description"
+      content="Learn and practice Morse code through three switchable vintage machine themes."
+    />
+    <title>Morse Trainer</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=DM+Mono:wght@400;500&amp;family=VT323&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#trainer">Skip to trainer</a>
+
+    <header class="app-bar">
+      <div class="app-identity" aria-label="Morse Trainer">
+        <span class="identity-signal" aria-hidden="true">· — ·</span>
+        <div>
+          <strong>Morse Trainer</strong>
+          <span>Three machines. One learning system.</span>
+        </div>
+      </div>
+
+      <button class="guide-button" type="button" id="guideButton">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 17h.01M9.1 9a3 3 0 1 1 4.83 2.37c-1.1.82-1.93 1.35-1.93 2.63" />
+          <circle cx="12" cy="12" r="9" />
+        </svg>
+        <span>How it works</span>
+        <small>3 steps</small>
+      </button>
+
+      <div class="toolbar" aria-label="Trainer controls">
+        <div class="control-set" aria-label="Practice path">
+          <span class="control-label">Practice path</span>
+          <div class="segmented-control" id="modeControl">
+            <button type="button" data-mode="learn" aria-pressed="false">Learn</button>
+            <button type="button" data-mode="drill" aria-pressed="true">Drill</button>
+            <button type="button" data-mode="sprint" aria-pressed="false">Sprint</button>
+          </div>
+        </div>
+
+        <div class="control-set" aria-label="Machine theme">
+          <span class="control-label">Machine theme</span>
+          <div class="segmented-control theme-control" id="themeControl">
+            <button type="button" data-theme-choice="terminal" aria-pressed="true">
+              <span class="theme-dot terminal-dot" aria-hidden="true"></span>Terminal
+            </button>
+            <button type="button" data-theme-choice="teletext" aria-pressed="false">
+              <span class="theme-dot teletext-dot" aria-hidden="true"></span>Teletext
+            </button>
+            <button type="button" data-theme-choice="pocket" aria-pressed="false">
+              <span class="theme-dot pocket-dot" aria-hidden="true"></span>Pocket
+            </button>
+          </div>
+        </div>
+
+        <div class="speed-control speed-picker" id="speedPicker">
+          <span class="control-label" id="speedLabel">Signal speed</span>
+          <button
+            class="speed-trigger"
+            type="button"
+            id="speedTrigger"
+            popovertarget="speedMenu"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-labelledby="speedLabel speedValue"
+          >
+            <span class="speed-trigger-copy">
+              <strong id="speedValue">Steady</strong>
+              <small id="speedMeta">13 WPM · recommended</small>
+            </span>
+            <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="m5 7.5 5 5 5-5" />
+            </svg>
+          </button>
+          <div class="speed-menu" id="speedMenu" popover="auto" role="listbox" aria-labelledby="speedLabel">
+            <button type="button" role="option" data-difficulty="gentle" aria-selected="false" tabindex="-1">
+              <span><strong>Gentle</strong><small>Hear every element clearly</small></span>
+              <span class="speed-wpm">8 WPM</span>
+            </button>
+            <button type="button" role="option" data-difficulty="steady" aria-selected="true" tabindex="0">
+              <span><strong>Steady</strong><small>The best place to begin</small></span>
+              <span class="speed-wpm">13 WPM</span>
+            </button>
+            <button type="button" role="option" data-difficulty="brisk" aria-selected="false" tabindex="-1">
+              <span><strong>Brisk</strong><small>Build recognition speed</small></span>
+              <span class="speed-wpm">20 WPM</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main" id="trainer" tabindex="-1">
+      <h1 class="visually-hidden">Morse Trainer learning console</h1>
+
+      <section class="onboarding" id="onboarding" aria-label="Getting started with Morse Trainer">
+        <div class="onboarding-progress" aria-label="Getting started progress">
+          <span data-progress-step="1"><b>1</b> Hear</span>
+          <span data-progress-step="2"><b>2</b> Choose</span>
+          <span data-progress-step="3"><b>3</b> Start</span>
+        </div>
+
+        <div class="onboarding-step" data-onboarding-step="1">
+          <div class="onboarding-copy">
+            <p class="onboarding-context">Your first minute</p>
+            <h2 id="onboardingTitle">Turn a signal into something you can recognize.</h2>
+            <p>Morse is rhythm, not a string of marks to count. Start by hearing one useful pattern and watching its shape move with the sound.</p>
+            <div class="onboarding-actions">
+              <button class="quiet-action" type="button" data-skip-onboarding>Explore on my own</button>
+              <button class="onboarding-next" type="button" data-onboarding-next>Choose my path</button>
+            </div>
+          </div>
+
+          <button class="first-signal" type="button" id="firstSignalButton" aria-label="Play the Morse signal for A, dot dash">
+            <span class="first-signal-state" id="firstSignalState">Tap to hear your first signal</span>
+            <span class="first-signal-pattern" id="firstSignalPattern" aria-hidden="true">
+              <i data-symbol="."></i><i class="dash" data-symbol="-"></i>
+            </span>
+            <span class="first-signal-answer">
+              <strong>A</strong>
+              <span><b>di-dah</b><small>short, then long</small></span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5V7Z" /></svg>
+            </span>
+          </button>
+        </div>
+
+        <div class="onboarding-step" data-onboarding-step="2" hidden>
+          <div class="onboarding-copy compact">
+            <p class="onboarding-context">Pick your goal</p>
+            <h2>What would feel useful today?</h2>
+            <p>You can switch paths at any time. Your session and machine theme stay with you.</p>
+          </div>
+          <div class="path-picker" role="group" aria-label="Starting practice path">
+            <button type="button" data-onboarding-mode="learn" aria-pressed="true">
+              <span class="choice-index">01</span>
+              <span><strong>Learn from zero</strong><small>See, hear, and remember one letter at a time.</small></span>
+              <span class="choice-time">2–5 min</span>
+            </button>
+            <button type="button" data-onboarding-mode="drill" aria-pressed="false">
+              <span class="choice-index">02</span>
+              <span><strong>Build recall</strong><small>Hear a signal, choose the letter, get instant feedback.</small></span>
+              <span class="choice-time">5 min</span>
+            </button>
+            <button type="button" data-onboarding-mode="sprint" aria-pressed="false">
+              <span class="choice-index">03</span>
+              <span><strong>Test my speed</strong><small>Decode as many letters as you can in 30 seconds.</small></span>
+              <span class="choice-time">30 sec</span>
+            </button>
+          </div>
+          <div class="onboarding-actions spread">
+            <button class="quiet-action" type="button" data-onboarding-back>Back</button>
+            <button class="onboarding-next" type="button" data-onboarding-next>Choose a machine</button>
+          </div>
+        </div>
+
+        <div class="onboarding-step" data-onboarding-step="3" hidden>
+          <div class="onboarding-copy compact">
+            <p class="onboarding-context">Make it yours</p>
+            <h2>Choose the machine you want to learn on.</h2>
+            <p>All three are the same trainer underneath. Changing the look never resets your progress.</p>
+          </div>
+          <div class="onboarding-themes" role="group" aria-label="Starting machine theme">
+            <button class="theme-preview terminal-preview" type="button" data-onboarding-theme="terminal" aria-pressed="true">
+              <span class="preview-screen"><i>· —</i><b>&gt; READY_</b></span>
+              <span><strong>Amber Terminal</strong><small>Focused phosphor console</small></span>
+            </button>
+            <button class="theme-preview teletext-preview" type="button" data-onboarding-theme="teletext" aria-pressed="false">
+              <span class="preview-screen"><i>· —</i><b>MORSE 404</b></span>
+              <span><strong>Broadcast Teletext</strong><small>Bold page-color blocks</small></span>
+            </button>
+            <button class="theme-preview pocket-preview" type="button" data-onboarding-theme="pocket" aria-pressed="false">
+              <span class="preview-screen"><i>· —</i><b>CW-83</b></span>
+              <span><strong>Pocket Trainer</strong><small>Tactile desk instrument</small></span>
+            </button>
+          </div>
+          <div class="onboarding-actions spread">
+            <button class="quiet-action" type="button" data-onboarding-back>Back</button>
+            <button class="onboarding-next launch-action" type="button" id="finishOnboarding">Start my first session</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="coach-strip" aria-label="How the selected practice path works">
+        <div class="coach-intro">
+          <span id="coachMode">Learn path</span>
+          <strong id="coachTitle">Build one clean sound-to-letter connection.</strong>
+        </div>
+        <ol class="coach-steps" id="coachSteps">
+          <li><b>1</b><span>Hear it</span></li>
+          <li><b>2</b><span>See the shape</span></li>
+          <li><b>3</b><span>Move on</span></li>
+        </ol>
+        <p class="coach-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 4v6M17 4v6M6 14h12v6H6z" /></svg>
+          <span><strong>Theme-safe progress</strong> Change machines whenever you like—your session stays put.</span>
+        </p>
+      </section>
+
+      <section class="machine" id="machine" data-theme="terminal" aria-labelledby="machineTitle" tabindex="-1">
+        <div class="teletext-bars" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+
+        <header class="machine-header">
+          <div class="machine-identity">
+            <span id="machineTitle">MORSE TRAINER v1.4</span>
+            <span id="machineSubtitle">AMBER TERMINAL · SET 04</span>
+          </div>
+          <dl class="session-stats" aria-label="Session statistics">
+            <div><dt>Speed</dt><dd id="speedStat">13 WPM</dd></div>
+            <div><dt>Accuracy</dt><dd id="accuracyStat">—</dd></div>
+            <div><dt>Streak</dt><dd id="streakStat">0</dd></div>
+          </dl>
+        </header>
+
+        <div class="machine-content">
+          <aside class="roster-panel" aria-labelledby="rosterTitle">
+            <div class="roster-heading">
+              <span id="rosterTitle">Starter alphabet</span>
+              <span>Set 04</span>
+            </div>
+            <ol class="roster" id="roster"></ol>
+            <div class="roster-footer">
+              <span>Session</span>
+              <strong id="sessionScore">0 / 0 correct</strong>
+              <span id="bestScore">Best sprint · 0</span>
+            </div>
+          </aside>
+
+          <section class="practice-stage" aria-label="Morse practice">
+            <div class="learn-view" id="learnView" hidden>
+              <div class="lesson-meta">
+                <span id="lessonStep">Lesson 1 of 10</span>
+                <span id="lessonPatternText">·</span>
+              </div>
+              <div class="lesson-core">
+                <strong class="lesson-letter" id="lessonLetter">E</strong>
+                <div class="lesson-signal" id="lessonSignal" aria-hidden="true"></div>
+              </div>
+              <p class="lesson-spoken" id="lessonSpoken">di</p>
+              <p class="lesson-note" id="lessonNote"></p>
+              <div class="lesson-actions">
+                <button class="secondary-action" type="button" id="previousLesson">Previous</button>
+                <button class="primary-action" type="button" id="hearLesson">Hear it</button>
+                <button class="primary-action" type="button" id="nextLesson">Next letter</button>
+              </div>
+            </div>
+
+            <div class="practice-view" id="practiceView">
+              <div class="sprint-panel" id="sprintPanel" hidden>
+                <div class="sprint-copy">
+                  <span id="clock">0:30</span>
+                  <span id="sprintScore">0 points</span>
+                </div>
+                <div class="time-track" role="progressbar" aria-label="Sprint time remaining" aria-valuemin="0" aria-valuemax="30" aria-valuenow="30">
+                  <span id="timeBar"></span>
+                </div>
+              </div>
+              <p class="status-line" id="statusLine">Listening</p>
+              <button class="signal-button" type="button" id="signalButton" aria-label="Replay the current Morse signal">
+                <span class="signal-text" id="signalText">·</span>
+                <span class="signal-bars" id="signalBars" aria-hidden="true"></span>
+                <span class="replay-copy">Replay signal</span>
+              </button>
+              <div class="decode-line" aria-label="Your answer">
+                <span>Decode</span>
+                <strong id="typedAnswer">_</strong>
+                <span class="cursor" aria-hidden="true"></span>
+              </div>
+              <div class="practice-actions">
+                <button class="secondary-action" type="button" id="replayButton">Replay</button>
+                <button class="primary-action" type="button" id="mainAction">Hint</button>
+              </div>
+            </div>
+
+            <div class="answer-deck" id="answerDeck">
+              <div class="answer-heading">
+                <span>Answer keys</span>
+                <span id="answerHint">Tap or press A–Z</span>
+              </div>
+              <div class="answer-grid" id="answerGrid"></div>
+            </div>
+          </section>
+        </div>
+
+        <footer class="machine-footer">
+          <span id="footerMode">DRILL MODE</span>
+          <span class="keyboard-help">Space · replay&nbsp;&nbsp; A–Z · answer&nbsp;&nbsp; Enter · hint/start</span>
+          <span id="footerResult">0 OK</span>
+        </footer>
+      </section>
+    </main>
+
+    <p class="visually-hidden" id="liveStatus" aria-live="polite"></p>
+  </body>
+</html>
