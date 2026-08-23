@@ -50,6 +50,7 @@ export function getElements() {
     bestScore: required("#bestScore"),
 
     introCard: required("#introCard"),
+    introTag: required("#introTag"),
     introLetter: required("#introLetter"),
     introSignal: required("#introSignal"),
     introSpoken: required("#introSpoken"),
@@ -84,6 +85,7 @@ export function getElements() {
     sendTargetLabel: required("#sendTargetLabel"),
     sendReplay: required("#sendReplay"),
     sendPad: required("#sendPad"),
+    sendPadLabel: required("#sendPadLabel"),
     sendSequence: required("#sendSequence"),
     sendDecode: required("#sendDecode"),
     sendClear: required("#sendClear"),

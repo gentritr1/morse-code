@@ -9,7 +9,14 @@ import {
 import { appendEvent, readEvents, writeEvents } from "./features/events.js";
 import { createGuideController } from "./features/guide.js";
 import { readPerformanceProfile, recordPerformance as updatePerformanceProfile } from "./features/performance-profile.js";
-import { LEGACY_MODES, markSeededFromHistory, nextTarget, readProgress, unlockedLetters } from "./features/progress.js";
+import {
+  LEGACY_MODES,
+  markSeededFromHistory,
+  needsSeeding,
+  nextTarget,
+  readProgress,
+  unlockedLetters,
+} from "./features/progress.js";
 import { createSendController } from "./features/send.js";
 import { createSettingsController } from "./features/settings.js";
 import { createTrainerController } from "./features/trainer.js";
@@ -77,6 +84,12 @@ const state = {
   revealed: false,
   revealMarks: false,
   playing: false,
+  // The whole signal has been heard: what resuming a paused round reads to
+  // decide between replaying it and simply reopening the answer window.
+  signalHeard: false,
+  roundPaused: false,
+  pausedHeard: false,
+  pausedRound: 0,
   locked: false,
   running: false,
   timeLeft: SPRINT_SECONDS,
@@ -97,6 +110,8 @@ const state = {
   sessionExtras: 0,
   seedIndex: 0,
   introSeeded: false,
+  introRefresh: false,
+  pairRefreshed: null,
   seenRound: {},
   served: {},
   skippedPhases: [],
@@ -107,6 +122,9 @@ const state = {
   groupStreaks: { miss: 0, clean: 0 },
   spacingDirection: null,
   wasReadyForNew: true,
+  // Which phase table this sitting runs on, decided once so the seed run
+  // flipping `progress.seeded` mid-session cannot reshape the rail.
+  seedRun: needsSeeding(progress),
   roundInterrupted: false,
   events: readEvents(storage),
   introLetter: null,
@@ -116,6 +134,7 @@ const state = {
   sendTarget: nextTarget(pool),
   sendMarks: [],
   sendEvaluated: false,
+  sendPlaying: false,
   sendStatus: "Hear the target, then send it back",
   sendOutcome: "neutral",
   sendPressStartedAt: 0,
@@ -182,8 +201,15 @@ context.settings.bind();
 context.letters.bind();
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible") context.send.finishPress(true);
-  if (document.visibilityState === "visible" && state.running) context.trainer.updateSprint();
+  if (document.visibilityState !== "visible") {
+    context.send.finishPress(true);
+    // A hidden page is not practising. The signal stops, the auto-advance
+    // stops, and the round waits rather than running out in an empty room.
+    context.trainer.pauseRound();
+    return;
+  }
+  if (state.running) context.trainer.updateSprint();
+  context.trainer.resumeRound();
 });
 
 context.render();

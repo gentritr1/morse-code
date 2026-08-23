@@ -76,6 +76,16 @@ export function scheduleDurationMs(text, speed) {
 export class MorseAudio {
   #context = null;
   #liveTone = null;
+  /** Every oscillator this instance has scheduled and not yet let expire. */
+  #nodes = [];
+  /**
+   * When the last scheduled node stops, on the same clock the rest of the app
+   * uses. A freshly created AudioContext starts its own clock only once the
+   * audio thread spins up, so the two are permanently offset by that startup;
+   * reading the guard off the context clock would keep it shut for that long
+   * after the answer window had already opened.
+   */
+  #endsAtMs = 0;
 
   #ensureContext() {
     const Context = window.AudioContext || window.webkitAudioContext;
@@ -85,11 +95,38 @@ export class MorseAudio {
     return this.#context;
   }
 
+  /**
+   * Silence anything still scheduled. Two signals sounding at once is not a
+   * cosmetic fault: the learner is being asked to name one character, so a
+   * second transmission laid over the first makes the round unanswerable and
+   * the response clock meaningless.
+   */
+  stop() {
+    for (const node of this.#nodes) {
+      try {
+        node.stop(0);
+      } catch {
+        // A node that already ended cannot be stopped again, and need not be.
+      }
+    }
+    this.#nodes = [];
+    this.#endsAtMs = 0;
+    this.stopTone();
+  }
+
+  /** True until the last scheduled node's end time has passed. */
+  isPlaying() {
+    if (!this.#nodes.length) return false;
+    return performance.now() < this.#endsAtMs;
+  }
+
   #playSchedule(marks) {
     try {
+      this.stop();
       const context = this.#ensureContext();
       if (!context) return false;
       const base = context.currentTime + 0.06;
+      const baseMs = performance.now() + 60;
 
       for (const mark of marks) {
         const time = base + mark.start / 1000;
@@ -106,6 +143,12 @@ export class MorseAudio {
         oscillator.connect(gain).connect(context.destination);
         oscillator.start(time);
         oscillator.stop(time + duration + 0.02);
+        this.#nodes.push(oscillator);
+        // The audible end, not the node's stop time: the extra 20 ms is a
+        // safety margin on an oscillator whose gain is already at zero, and
+        // counting it would keep the replay guard shut after the answer window
+        // had already opened.
+        this.#endsAtMs = Math.max(this.#endsAtMs, baseMs + mark.start + mark.duration);
       }
       return true;
     } catch {

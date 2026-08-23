@@ -17,6 +17,7 @@ export function createGuideController(context) {
   }
 
   function playFirstSignal() {
+    if (audio.isPlaying()) return;
     const speed = context.trainer.currentSpeed();
     clearSignalAnimation();
     cancelSignalAnimation = animateMarks(
@@ -41,7 +42,7 @@ export function createGuideController(context) {
    */
   function playRhythm(preset) {
     const speed = SPEEDS[preset];
-    if (!speed) return;
+    if (!speed || audio.isPlaying()) return;
     if (!audio.playText(RHYTHM_SAMPLE, speed)) {
       announce("Audio is unavailable, so the rhythms cannot be previewed.");
       return;
@@ -101,6 +102,7 @@ export function createGuideController(context) {
   }
 
   function open() {
+    context.trainer.pauseRound();
     if (state.running) {
       context.trainer.stopSprint();
       state.locked = true;
@@ -129,6 +131,7 @@ export function createGuideController(context) {
     state.onboardingOpen = false;
     storage.set(STORAGE_KEYS.onboarding, true);
     render();
+    context.trainer.resumeRound();
     context.trainer.focusTrainer(trainerFocusTarget(state.mode));
     announce("Guide closed. You can reopen it from Settings.");
   }
@@ -142,7 +145,9 @@ export function createGuideController(context) {
     if (selectedTheme !== state.theme) context.trainer.setTheme(selectedTheme);
     context.render();
 
-    if (state.mode === "learn") context.trainer.playCurrentSignal();
+    // A paused round resumes on its own terms — replaying only if the learner
+    // never heard it through. Otherwise this is the first signal of the visit.
+    if (state.mode === "learn" && !context.trainer.resumeRound()) context.trainer.playCurrentSignal();
     context.trainer.focusTrainer(trainerFocusTarget(state.mode));
     announce(
       state.mode === "sprint"

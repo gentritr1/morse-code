@@ -97,12 +97,38 @@ export function decayed(timestamps, halfLife, now = Date.now()) {
   return timestamps.reduce((total, ts) => total + 2 ** (-(now - ts) / halfLife), 0);
 }
 
+/**
+ * Reading a character inside a word is a different skill from naming it on its
+ * own, and mixing the two corrupts both: one wrong letter in a five-letter word
+ * used to push every character in it into relearning. Word rounds therefore
+ * keep their own counters and never touch the schedule.
+ *
+ * `att` is every position seen, `elig` the ones that were not interrupted, `ok`
+ * the correct ones among those, and `indep` the ones that were also clean.
+ */
+export function emptyContextRecord() {
+  return { att: 0, elig: 0, ok: 0, indep: 0 };
+}
+
+/**
+ * Why a pair was missed, not merely that it was. Two characters that genuinely
+ * sound alike, a character the learner knows but cannot reach in time, and one
+ * they could not name even after a second listen are three different faults
+ * with three different cures — and drilling the pair is the right answer to
+ * only the first of them.
+ */
+export function emptyCauseRecord() {
+  return { discrimination: 0, hesitation: 0, uncertain: 0 };
+}
+
 export function createEmptyPerformanceProfile() {
   return {
     letters: Object.fromEntries(STARTER_POOL.map((letter) => [letter, emptyLetterMetrics()])),
+    context: Object.fromEntries(STARTER_POOL.map((letter) => [letter, emptyContextRecord()])),
     confusions: {},
     pairWins: {},
-    rtLog: { char: [] },
+    confCause: {},
+    rtLog: { char: [], word: [] },
     sendLog: [],
   };
 }
@@ -120,6 +146,46 @@ function readPairList(source) {
     if (list.length) pairs[key] = list;
   }
   return pairs;
+}
+
+/**
+ * Word-round counters, read defensively. The record was `{n, ok}` before
+ * interrupted and replay-assisted positions were separated out; `n` counted
+ * every attempt, so it maps onto both `att` and `elig` — reading it as `att`
+ * alone would leave `elig` at zero and let a later accuracy divide by nothing.
+ */
+function readContext(source) {
+  const out = {};
+  for (const letter of STARTER_POOL) {
+    const record = source?.[letter];
+    if (!record || typeof record !== "object") {
+      out[letter] = emptyContextRecord();
+      continue;
+    }
+    const legacy = !Number.isFinite(Number(record.elig));
+    const n = safeCount(record.n);
+    const att = Number.isFinite(Number(record.att)) ? safeCount(record.att) : n;
+    const elig = legacy ? n : safeCount(record.elig);
+    const ok = Math.min(safeCount(record.ok), elig);
+    out[letter] = { att: Math.max(att, elig), elig, ok, indep: Math.min(safeCount(record.indep), ok) };
+  }
+  return out;
+}
+
+/** Cause counts, read defensively: a missing or malformed record is zeros. */
+function readCauseMap(source) {
+  const out = {};
+  if (!source || typeof source !== "object") return out;
+  for (const [key, value] of Object.entries(source)) {
+    if (!/^[A-Z]>[A-Z]$/.test(key) || !value || typeof value !== "object") continue;
+    const record = {
+      discrimination: Math.floor(safeCount(value.discrimination)),
+      hesitation: Math.floor(safeCount(value.hesitation)),
+      uncertain: Math.floor(safeCount(value.uncertain)),
+    };
+    if (record.discrimination || record.hesitation || record.uncertain) out[key] = record;
+  }
+  return out;
 }
 
 /**
@@ -168,6 +234,14 @@ export function readPerformanceProfile(storage, now = Date.now()) {
       rts: safeTimes(source.rts, RT_WINDOW),
     };
 
+    // Invariants the rest of the module is entitled to assume. A record that
+    // claims more correct answers than attempts, or fewer exposures than
+    // attempts, is not an error to throw on — it is a number to bring back
+    // inside the range that makes an accuracy meaningful.
+    metrics.correct = Math.min(metrics.correct, metrics.attempts);
+    metrics.exposures = Math.max(metrics.exposures, metrics.attempts);
+    metrics.firstListenCorrect = Math.min(metrics.firstListenCorrect, metrics.firstListenAttempts);
+
     if (!metrics.phase) {
       const hits = metrics.recent.filter((outcome) => outcome === "hit").length;
       const trusted = metrics.firstListenAttempts >= FIRST_LISTEN_MIN && hits >= STEADY_HITS;
@@ -200,7 +274,12 @@ export function readPerformanceProfile(storage, now = Date.now()) {
 
   profile.confusions = { ...legacyConfusions, ...readPairList(stored.confusions) };
   profile.pairWins = readPairList(stored.pairWins);
-  profile.rtLog = { char: safeTimes(stored.rtLog?.char, RT_LOG_CAP) };
+  profile.context = readContext(stored.context);
+  profile.confCause = readCauseMap(stored.confCause);
+  profile.rtLog = {
+    char: safeTimes(stored.rtLog?.char, RT_LOG_CAP),
+    word: safeTimes(stored.rtLog?.word, RT_LOG_CAP),
+  };
   profile.sendLog = Array.isArray(stored.sendLog)
     ? stored.sendLog
       .filter((entry) => entry && typeof entry === "object" && safeCount(entry.unit))
@@ -225,6 +304,16 @@ export function readPerformanceProfile(storage, now = Date.now()) {
  */
 export function poolBaseline(profile) {
   const log = profile.rtLog?.char ?? [];
+  if (log.length < 5) return DEFAULT_BASELINE_MS;
+  return median(log) ?? DEFAULT_BASELINE_MS;
+}
+
+/**
+ * Copying a character inside a word is slower than naming one on its own, so
+ * "slow" in a word round is measured against the learner's own word pace.
+ */
+export function wordBaseline(profile) {
+  const log = profile.rtLog?.word ?? [];
   if (log.length < 5) return DEFAULT_BASELINE_MS;
   return median(log) ?? DEFAULT_BASELINE_MS;
 }
@@ -267,10 +356,38 @@ export function confForLetter(profile, letter, now = Date.now()) {
     .reduce((total, key) => total + confStrength(profile, key, now), 0);
 }
 
-export function noteConfusion(profile, target, answered, now = Date.now()) {
+/**
+ * What went wrong, decided from the same evidence the scheduler used. A replay
+ * or a hint means the learner never retrieved it at all; an unaided answer that
+ * arrived well past their own pace is a reach, not a mix-up; anything else is
+ * two characters genuinely sounding alike.
+ */
+export function missCause({ assisted = false, rt = 0, baseline = DEFAULT_BASELINE_MS } = {}) {
+  if (assisted) return "uncertain";
+  if (Number.isFinite(rt) && baseline > 0 && rt > SLOW_FACTOR * baseline) return "hesitation";
+  return "discrimination";
+}
+
+/** The cause a pair is mostly missed for. Ties fall to discrimination. */
+export function topCause(profile, key) {
+  const record = profile.confCause?.[key];
+  if (!record) return null;
+  const highest = Math.max(record.discrimination, record.hesitation, record.uncertain);
+  if (!highest) return null;
+  if (record.discrimination === highest) return "discrimination";
+  return record.hesitation === highest ? "hesitation" : "uncertain";
+}
+
+export function noteConfusion(profile, target, answered, now = Date.now(), cause = null) {
   if (!target || !answered || target === answered) return;
   const key = confusionKey(target, answered);
   profile.confusions[key] = [...(profile.confusions[key] ?? []), now].slice(-PAIR_LIST_CAP);
+  if (!cause) return;
+  if (!profile.confCause) profile.confCause = {};
+  const record = profile.confCause[key] ?? emptyCauseRecord();
+  if (record[cause] === undefined) return;
+  record[cause] += 1;
+  profile.confCause[key] = record;
 }
 
 /**
@@ -283,6 +400,45 @@ export function notePairWin(profile, letter, now = Date.now(), allowed = null) {
   if (!pair || pair[0] !== letter) return;
   const key = confusionKey(pair[0], pair[1]);
   profile.pairWins[key] = [...(profile.pairWins[key] ?? []), now].slice(-PAIR_LIST_CAP);
+}
+
+/* -------------------------------------------------------- word context -- */
+
+/**
+ * One character position inside a word or burst. It writes nowhere near the
+ * schedule: a word says something about reading in context, not about whether
+ * the character itself has been retained, and one wrong position must never be
+ * able to push a whole message into relearning.
+ */
+export function recordContext(profile, letter, options = {}) {
+  const {
+    hit = false, clean = false, interrupted = false, answered = "", at = Date.now(), cause = null,
+  } = options;
+  if (!profile.context) profile.context = {};
+  const record = profile.context[letter] ?? emptyContextRecord();
+  record.att += 1;
+  if (!interrupted) {
+    record.elig += 1;
+    if (hit) record.ok += 1;
+    if (hit && clean) record.indep += 1;
+    // The confusion model takes the same evidence test as the scheduler.
+    if (!hit) noteConfusion(profile, letter, answered, at, cause);
+  }
+  profile.context[letter] = record;
+  return record;
+}
+
+/**
+ * The whole word's elapsed time, kept only when the copy was clean. It is what
+ * "slow in a word" is later measured against; a wrong word contributes nothing.
+ */
+export function recordWordTime(profile, responseMs) {
+  const value = Math.max(0, Math.min(60000, Number(responseMs) || 0));
+  if (!value) return;
+  profile.rtLog = {
+    char: profile.rtLog?.char ?? [],
+    word: [...(profile.rtLog?.word ?? []), value].slice(-RT_LOG_CAP),
+  };
 }
 
 /* -------------------------------------------------------------- grading -- */
@@ -575,6 +731,8 @@ export function recordPerformance(profile, target, answered, hit, responseMs, op
     clean = false,
     scored = true,
     graded = false,
+    interrupted = false,
+    cause = null,
   } = options;
   const safeResponseMs = Math.max(0, Math.min(60000, Number(responseMs) || 0));
 
@@ -595,7 +753,9 @@ export function recordPerformance(profile, target, answered, hit, responseMs, op
       ? Math.min(metrics.fastestMs, safeResponseMs)
       : safeResponseMs;
   }
-  if (!hit) noteConfusion(profile, target, answered, at);
+  // A round the learner walked away from invented no confusion: they did not
+  // mistake one character for another, they simply were not there.
+  if (!hit && !interrupted) noteConfusion(profile, target, answered, at, cause);
 
   if (!firstListen) return;
   metrics.firstListenAttempts += 1;

@@ -58,21 +58,23 @@ The guide is three steps: **hear your first letter**, **pick a rhythm**, **pick 
 
 ## Keyboard controls
 
-- `Space`: replay the current signal (in Send, replay the target) — a replay means the round no longer counts as a first listen
+- `Space`: replay the current signal (in Send, replay the target) — a replay means the round no longer counts as a first listen. Asking again while the signal is still sounding is ignored, and costs you nothing.
 - `A–Z`: answer with an unlocked letter; in a group round the letters go in left to right
 - `Backspace`: take back the last letter of a group round
 - `Enter`: show a hint, start a sprint, confirm a new letter with **Got it**, or start the next session with **Keep going**
 - `Esc`: close settings, the letters drawer, or the guide
+
+The answer keys open when the last tone ends, not before: until then they sit dimmed and a keypress does nothing. Opening settings, the letters drawer or the guide, or leaving the page, pauses the round — the signal stops and nothing advances. If the signal had not finished, it plays again when you come back and the round counts as usual; if you had already heard it, the round is kept out of your record rather than scored on a memory.
 
 ## Progress and storage
 
 Three keys hold everything, all read defensively and never wiped by an upgrade:
 
 - `morse-trainer-progress-v1` — `{ "unlocked": 2, "newPaused": false, "effOffset": 0, "sessions": 0, "seeded": false }`: how many characters are open, whether new ones are on hold, the spacing adjustment, how many sessions you have finished, and whether the opening introduction has been given. A corrupted or unknown value simply starts you at two characters.
-- `morse-trainer-performance-v1` — per character: its phase (`acq`, `rev`, `rel`), stability, due time, acquisition step, lapse times, clean response times, plus clean first listens, replays and hints. Beside the characters it holds the confusion pairs and their cures as timestamps, the pooled response log, and the log of clean sends. A profile written before this scheduler existed is *placed*, not reset: a character with five clean first listens and a good recent record starts in review, due twenty hours after you last saw it, and everything else starts learning. Old confusion counts become that many timestamps, and old `mirrorAttempts` are still read once as `sendAttempts`.
+- `morse-trainer-performance-v1` — per character: its phase (`acq`, `rev`, `rel`), stability, due time, acquisition step, lapse times, clean response times, plus clean first listens, replays and hints. Beside the characters it holds the confusion pairs, their cures and the reason each was missed, the per-character word-round counters, the pooled response logs, and the log of clean sends. A profile written before this scheduler existed is *placed*, not reset: a character with five clean first listens and a good recent record starts in review, due twenty hours after you last saw it, and everything else starts learning. Old confusion counts become that many timestamps, and old `mirrorAttempts` are still read once as `sendAttempts`.
 - `morse-trainer-events-v1` — one append-only record per answered signal, capped at 4000. It is the only thing that can say whether a character survived a night, because a counter can only say how it is doing now.
 
-A stored mode of `drill` from an earlier version opens Learn. **Reset progress** in Settings clears all three keys and the sprint best after a confirmation press.
+A stored mode of `drill` from an earlier version opens Learn. **Reset progress** in Settings clears all three keys and the sprint best after a confirmation press; it also stops any signal that is playing, cancels every pending timer, and puts you back at the opening introduction without reloading the page.
 
 ## Development parameters
 

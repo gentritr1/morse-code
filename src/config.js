@@ -91,6 +91,20 @@ export const SESSION_PHASES = Object.freeze([
   Object.freeze({ id: "use", label: "USE", through: SESSION_ROUNDS }),
 ]);
 
+/**
+ * The very first session. Its opening run — two intro cards and the four
+ * guided K/M discriminations — *is* the Arrive phase, and Repair only needs
+ * two rounds to contrast the pair it just taught, so the first sitting is the
+ * same twenty rounds as any other rather than a longer initiation.
+ */
+export const SEED_SESSION_PHASES = Object.freeze([
+  Object.freeze({ id: "arrive", label: "ARRIVE", through: 4 }),
+  Object.freeze({ id: "repair", label: "REPAIR", through: 6 }),
+  Object.freeze({ id: "new", label: "NEW", through: 7 }),
+  Object.freeze({ id: "mix", label: "MIX", through: 16 }),
+  Object.freeze({ id: "use", label: "USE", through: SESSION_ROUNDS }),
+]);
+
 /** A first-listen answer this much slower than the learner's own baseline reads as slow. */
 export const SLOW_FACTOR = 1.6;
 

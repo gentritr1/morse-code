@@ -2,7 +2,6 @@ import {
   INSTANT_MS,
   KOCH_ORDER,
   RT_CAP,
-  SESSION_PHASES,
   SESSION_ROUNDS,
   SPEEDS,
   SPRINT_SECONDS,
@@ -14,13 +13,24 @@ import {
 import { MORSE, NOTES, spokenPattern, visiblePattern } from "../data/morse.js";
 import { scheduleDurationMs, scheduleText } from "../platform/morse-audio.js";
 import { animateMarks, buildAnswerGrid, PLAYBACK_LEAD_MS, renderSignal } from "../ui/signals.js";
-import { gradeLetter, letterBaseline, notePairWin, recordHint, recordReplay } from "./performance-profile.js";
+import {
+  gradeLetter,
+  letterBaseline,
+  missCause,
+  notePairWin,
+  recordContext,
+  recordHint,
+  recordReplay,
+  recordWordTime,
+  wordBaseline,
+} from "./performance-profile.js";
 import {
   SEED_QUEUE,
   effectiveWpmFor,
   isComplete,
   needsSeeding,
   phaseFor,
+  phaseTable,
   pickRound,
   readyForNew,
   scheduleRetry,
@@ -131,6 +141,7 @@ export function createTrainerController(context) {
   function renderIntro() {
     const letter = state.introLetter;
     if (!letter) return;
+    elements.introTag.textContent = state.introRefresh ? "Refresher" : "New letter";
     elements.introLetter.textContent = letter;
     elements.introSpoken.textContent = spokenPattern(MORSE[letter]).replaceAll(" ", "-");
     elements.introNote.textContent = NOTES[letter];
@@ -147,10 +158,11 @@ export function createTrainerController(context) {
     elements.sessionPhase.hidden = !isLearn;
     if (!isLearn) return;
 
-    const active = phaseFor(Math.min(SESSION_ROUNDS, baseRound()));
+    const table = phaseTable(state.seedRun);
+    const active = phaseFor(Math.min(SESSION_ROUNDS, baseRound()), state.seedRun);
     elements.sessionPhase.textContent = active.label;
     for (const segment of elements.sessionRail.children) {
-      const phase = SESSION_PHASES.find((entry) => entry.id === segment.dataset.phase);
+      const phase = table.find((entry) => entry.id === segment.dataset.phase);
       if (!phase) continue;
       segment.dataset.state = state.skippedPhases.includes(phase.id)
         ? "skipped"
@@ -237,10 +249,13 @@ export function createTrainerController(context) {
 
     elements.mainAction.textContent = mainActionLabel();
     buildAnswerGrid(elements.answerGrid, pool(), answer);
-    const answersEnabled = !state.locked && (!isSprint || state.running);
+    // The keys stay on screen while the signal sounds — dimmed, not removed, so
+    // nothing shifts under the hand — and only open once the last tone has gone.
+    const answersEnabled = !state.locked && !state.playing && (!isSprint || state.running);
     const settled = state.lastOutcome !== null;
     for (const button of elements.answerGrid.children) {
       button.disabled = !answersEnabled;
+      button.setAttribute("aria-disabled", String(!answersEnabled));
       button.classList.toggle("was-correct", settled && state.correctKeys.includes(button.dataset.letter));
       button.classList.toggle("was-incorrect", settled && state.wrongKeys.includes(button.dataset.letter));
     }
@@ -294,6 +309,9 @@ export function createTrainerController(context) {
     state.sprintBeatBest = false;
     state.roundReason = null;
     state.roundInterrupted = false;
+    state.roundPaused = false;
+    state.pausedHeard = false;
+    state.signalHeard = false;
     if (mode === "send") {
       context.send.activate();
       context.render();
@@ -326,6 +344,23 @@ export function createTrainerController(context) {
     state.playing = false;
   }
 
+  /** True while a transmission the learner is meant to hear is still sounding. */
+  function isSounding() {
+    return state.playing || audio.isPlaying();
+  }
+
+  /**
+   * Every learner-initiated replay goes through here. Asking for the signal
+   * again while it is still sounding is not a replay — it is the same listen —
+   * so it is dropped rather than layered, and it does not spend the round's
+   * first listen.
+   */
+  function replaySignal() {
+    if (isSounding()) return false;
+    playCurrentSignal({ replay: true });
+    return true;
+  }
+
   /**
    * Playback and the visible marks share one schedule. The response clock is
    * stamped at the END of the transmission, so a long character is not scored
@@ -342,7 +377,9 @@ export function createTrainerController(context) {
     // are drawn for the playback, lit on its own schedule, and fade back to
     // placeholders when it ends, so the shape is never left on screen.
     clearSignalAnimation();
+    audio.stop();
     state.playing = true;
+    state.signalHeard = false;
     context.render();
     cancelSignalAnimation = animateMarks(
       [elements.signalText, elements.signalBars, elements.introSignal],
@@ -351,12 +388,17 @@ export function createTrainerController(context) {
     playbackTimer = window.setTimeout(() => {
       playbackTimer = null;
       state.playing = false;
+      // The answer window opens exactly here: not before the last tone, so a
+      // pre-emptive tap can never be recorded as an exceptionally fast answer.
+      state.signalHeard = true;
       context.render();
     }, PLAYBACK_LEAD_MS + durationMs);
 
     if (!state.introLetter) {
       state.roundStartedAt = performance.now() + durationMs;
-      if (replay && state.firstListen) {
+      // A round that has already been committed cannot be replayed *into*: the
+      // answer is in, so hearing it again is listening, not assistance.
+      if (replay && state.firstListen && !state.locked) {
         state.firstListen = false;
         for (const letter of new Set(text)) recordReplay(state.performanceProfile, letter);
         context.persistProfile();
@@ -392,6 +434,84 @@ export function createTrainerController(context) {
     return `Correct · ${target}`;
   }
 
+  /**
+   * Leaving a live round stops it. A signal playing to an empty room, an
+   * auto-advance firing behind a settings sheet, and a response clock running
+   * while the learner reads the guide are all the same fault: the round carries
+   * on without the person it is measuring.
+   */
+  function pauseRound() {
+    if (state.roundPaused) return false;
+    clearSignalAnimation();
+    audio.stop();
+    if (state.mode === "send") {
+      context.send.stopPlayback();
+      return false;
+    }
+    // Sprint keeps the pause it already had: the guide stops the clock, and a
+    // hidden tab simply costs the learner the seconds it was hidden for.
+    if (state.mode !== "learn") return false;
+
+    clearPendingRound();
+    // Whether the learner had already heard the whole signal decides what
+    // coming back owes them: a fresh transmission, or simply the answer window
+    // reopened on a trial that can no longer count.
+    state.pausedHeard = state.signalHeard;
+    state.pausedRound = state.sessionAnswered;
+    state.roundPaused = true;
+    state.locked = true;
+    state.status = "Paused";
+    context.render();
+    return true;
+  }
+
+  /**
+   * Coming back. An answered round only owes the learner its feedback beat; an
+   * unanswered one owes them the signal again — uninterrupted, from the top,
+   * and without being charged a replay for a listen they never got.
+   */
+  function resumeRound() {
+    if (!state.roundPaused) return false;
+    // Something else is still over the stage. Closing the settings panel to
+    // open the guide would otherwise restart the signal behind the dialog,
+    // because the popover's `toggle` event arrives after the guide has opened.
+    if (state.onboardingOpen || state.lettersOpen) return false;
+    if (elements.settingsPanel.matches(":popover-open")) return false;
+    state.roundPaused = false;
+    if (state.introLetter || state.sessionDone) {
+      state.locked = true;
+      context.render();
+      return true;
+    }
+    if (state.lastOutcome !== null) {
+      context.render();
+      nextRoundTimer = window.setTimeout(() => newRound(true), 400);
+      return true;
+    }
+
+    state.locked = false;
+    const heard = state.pausedHeard && state.pausedRound === state.sessionAnswered;
+    if (heard) {
+      // They already heard it. Replaying would be teaching a character they
+      // have not been asked about yet, so the window simply reopens — and the
+      // trial is marked interrupted, because whatever they answer now is a
+      // memory of a signal that was on screen while they were somewhere else.
+      state.roundInterrupted = true;
+      state.status = "Listening · not counted — you stepped away";
+      context.render();
+      return true;
+    }
+
+    // Cut off mid-signal, or paused before it ever played: the learner never
+    // had an uninterrupted listen, so they get a real one and the round is
+    // scored normally. The re-play is not charged as a replay.
+    state.roundInterrupted = false;
+    state.status = roundStatus();
+    context.render();
+    playCurrentSignal();
+    return true;
+  }
+
   /** One reason, only when it is true, and never on a plain mix or use round. */
   function roundStatus() {
     if (state.mode === "sprint") return "Next signal";
@@ -404,9 +524,13 @@ export function createTrainerController(context) {
    * One answered round. The counters, the schedule and the attempt log are
    * three different jobs: the counters describe the character, `gradeLetter`
    * decides when it comes back, and the log is the only thing that can later
-   * say whether it survived a night. Group rounds are context evidence — they
-   * record outcomes and confusions but never move a character's schedule,
-   * because a word says nothing about any single character in it.
+   * say whether it survived a night.
+   *
+   * The two skills are kept apart. Naming a character on its own is the only
+   * thing `gradeLetter` ever sees; reading one inside a word writes to its own
+   * `context` record and touches no scheduler field at all, because one wrong
+   * position in a five-letter word must never push five characters into
+   * relearning.
    */
   function commitAnswer() {
     const typed = state.typed;
@@ -424,6 +548,13 @@ export function createTrainerController(context) {
     // is, and a hit the learner needed a replay or a hint for is practice. A
     // miss is a miss either way.
     const assisted = replayed || hinted;
+    const cause = missCause({
+      assisted,
+      rt: responseMs,
+      baseline: group
+        ? wordBaseline(state.performanceProfile)
+        : letterBaseline(state.performanceProfile, target),
+    });
     let scored = !interrupted && (!hit || !assisted);
     let heldBack = false;
 
@@ -441,7 +572,9 @@ export function createTrainerController(context) {
       });
       scored = outcome.scored;
       heldBack = outcome.heldBack;
-      if (outcome.qualifies) notePairWin(state.performanceProfile, target, now, pool());
+      // The confusion model takes the same evidence test as the scheduler: a
+      // pair is only cured by an answer that was actually retrieved.
+      if (outcome.clean) notePairWin(state.performanceProfile, target, now, pool());
       if (outcome.heldBack && !state.heldBackThisSession.includes(target)) {
         state.heldBackThisSession.push(target);
       }
@@ -457,16 +590,30 @@ export function createTrainerController(context) {
     for (let index = 0; index < target.length; index += 1) {
       const letter = target[index];
       const letterHit = letter === typed[index];
-      context.recordPerformance(letter, typed[index] ?? "", letterHit, responseMs, {
-        firstListen,
-        at: now,
-        // A word is copied as one act, so its elapsed time says nothing about
-        // any single character: outcomes count, the clock does not.
-        timing: !group,
-        clean: letterHit && firstListen && !group,
-        scored: group ? scored && (!letterHit || !assisted) : scored,
-        graded: !group,
-      });
+      if (group) {
+        recordContext(state.performanceProfile, letter, {
+          hit: letterHit,
+          clean: letterHit && !assisted && !interrupted,
+          interrupted,
+          answered: typed[index] ?? "",
+          at: now,
+          cause,
+        });
+        if (letterHit && !assisted && !interrupted) {
+          notePairWin(state.performanceProfile, letter, now, pool());
+        }
+      } else {
+        context.recordPerformance(letter, typed[index] ?? "", letterHit, responseMs, {
+          firstListen,
+          at: now,
+          timing: true,
+          clean: letterHit && firstListen,
+          scored,
+          graded: true,
+          interrupted,
+          cause,
+        });
+      }
       context.logEvent({
         ts: now,
         target: letter,
@@ -476,14 +623,16 @@ export function createTrainerController(context) {
         replay: replayed,
         hint: hinted,
         interrupted,
-        scored: group ? scored && (!letterHit || !assisted) : scored,
+        scored: group ? !interrupted : scored,
         reason: interrupted ? "interrupted" : undefined,
       });
     }
 
-    if (!group) {
-      context.persistProfile();
-    } else if (state.mode === "learn") {
+    if (group && hit && !assisted && !interrupted) {
+      recordWordTime(state.performanceProfile, responseMs);
+    }
+    context.persistProfile();
+    if (group && state.mode === "learn") {
       // Only group rounds move the spacing: they are where the gaps are what
       // the learner is actually fighting.
       const result = updateSpacing(state.progress, state.groupStreaks, hit && firstListen, preset().effectiveWpm);
@@ -525,6 +674,10 @@ export function createTrainerController(context) {
 
   function answer(letter) {
     if (state.locked || state.introLetter || state.sessionDone) return;
+    // An answer given before the last tone is not a fast answer, it is a guess
+    // against a signal that has not finished arriving. It is dropped in
+    // silence: no status, no scoring, nothing for the learner to undo.
+    if (state.playing) return;
     if (!pool().includes(letter)) {
       state.status = "Not unlocked yet";
       context.render();
@@ -550,7 +703,7 @@ export function createTrainerController(context) {
     context.render();
   }
 
-  function openIntro(letter, { unlock = true, seed = false } = {}) {
+  function openIntro(letter, { unlock = true, seed = false, play = true, refresh = false } = {}) {
     clearPendingRound();
     // The two starting characters are taught, not unlocked: they were already
     // in play before the first session opened.
@@ -560,26 +713,34 @@ export function createTrainerController(context) {
       writeProgress(storage, state.progress);
     }
     state.introSeeded = seed;
+    state.introRefresh = refresh;
     state.introLetter = letter;
     state.locked = true;
     state.typed = "";
     state.feedback = "neutral";
     state.revealMarks = true;
+    state.roundPaused = false;
+    state.pausedHeard = false;
+    state.signalHeard = false;
     context.render();
-    playCurrentSignal();
+    // A card that opens without the learner asking for it — on load, or right
+    // after a reset — stays silent until they do.
+    if (play) playCurrentSignal();
     elements.introGotIt.focus({ preventScroll: true });
-    announce(`New letter ${letter}. ${NOTES[letter]}`);
+    announce(refresh ? `${letter} again. ${NOTES[letter]}` : `New letter ${letter}. ${NOTES[letter]}`);
   }
 
   function dismissIntro() {
     if (!state.introLetter) return;
     const letter = state.introLetter;
-    const seeded = state.introSeeded;
+    const handBack = state.introSeeded || state.introRefresh;
     state.introLetter = null;
     state.introSeeded = false;
-    // A seeded intro hands back to the opening run, which decides what comes
-    // next; an earned one goes straight into the character it just handed over.
-    if (seeded) {
+    state.introRefresh = false;
+    // A seeded intro hands back to the opening run and a refresher to the
+    // repair phase that asked for it; only an earned unlock goes straight into
+    // the character it has just handed over.
+    if (handBack) {
       newRound(true);
       return;
     }
@@ -613,11 +774,16 @@ export function createTrainerController(context) {
     state.sessionDone = false;
     state.sessionAnswered = 0;
     state.sessionExtras = 0;
+    // Which phase table this sitting runs on is decided once, at its start:
+    // the seed run flips `progress.seeded` halfway through, and the rail must
+    // not change shape underneath the learner when it does.
+    state.seedRun = needsSeeding(state.progress);
     state.seedIndex = needsSeeding(state.progress) ? state.seedIndex : SEED_QUEUE.length;
     state.seenRound = {};
     state.served = {};
     state.skippedPhases = [];
     state.retries = [];
+    state.pairRefreshed = null;
     state.heldBackThisSession = [];
     state.lapsedThisSession = [];
     state.relearnedThisSession = [];
@@ -654,6 +820,11 @@ export function createTrainerController(context) {
     state.lastOutcome = null;
     state.firstListen = true;
     state.roundInterrupted = false;
+    state.roundPaused = false;
+    state.pausedHeard = false;
+    // Nothing has been heard yet; the flag is what resuming reads to decide
+    // between replaying the signal and simply reopening the answer window.
+    state.signalHeard = false;
     state.status = roundStatus();
     state.roundStartedAt = performance.now();
     context.render();
@@ -695,9 +866,11 @@ export function createTrainerController(context) {
         served: state.served,
         previous: state.target,
         retries: state.retries,
+        pairRefreshed: state.pairRefreshed,
         ready,
         wasReady: state.wasReadyForNew,
         seedIndex: state.seedIndex,
+        seeded: state.seedRun,
         now,
       },
     });
@@ -714,7 +887,13 @@ export function createTrainerController(context) {
     }
 
     if (round.type === "intro") {
-      openIntro(round.letter, { unlock: round.unlock !== false, seed: Boolean(round.seed) });
+      if (round.refresh) state.pairRefreshed = round.pairKey;
+      openIntro(round.letter, {
+        unlock: round.unlock !== false,
+        seed: Boolean(round.seed),
+        play: playAfterRender,
+        refresh: Boolean(round.refresh),
+      });
       return;
     }
     startRound(round, playAfterRender);
@@ -725,6 +904,8 @@ export function createTrainerController(context) {
       startSprint();
       return;
     }
+    // The hint reveals the answer, so it waits for the last tone too.
+    if (state.playing) return;
     if (state.revealed) {
       newRound(true);
       return;
@@ -824,6 +1005,23 @@ export function createTrainerController(context) {
   function resetSession() {
     clearPendingRound();
     stopSprint();
+    clearSignalAnimation();
+    audio.stop();
+    context.send.stopPlayback();
+    state.roundPaused = false;
+    state.pausedHeard = false;
+    state.signalHeard = false;
+    state.roundInterrupted = false;
+    state.sessionSentence = "";
+    state.status = "Listening";
+    state.locked = false;
+    state.typed = "";
+    state.feedback = "neutral";
+    state.revealed = false;
+    state.revealMarks = false;
+    state.correctKeys = [];
+    state.wrongKeys = [];
+    state.lastOutcome = null;
     state.streak = 0;
     state.correct = 0;
     state.total = 0;
@@ -844,25 +1042,35 @@ export function createTrainerController(context) {
     state.served = {};
     state.skippedPhases = [];
     state.retries = [];
+    state.pairRefreshed = null;
     state.heldBackThisSession = [];
     state.lapsedThisSession = [];
     state.relearnedThisSession = [];
     state.groupStreaks = { miss: 0, clean: 0 };
     state.spacingDirection = null;
     state.wasReadyForNew = true;
-    if (state.mode === "sprint") setMode("learn");
-    else newRound(false);
+    state.seedRun = needsSeeding(state.progress);
+    if (state.mode === "sprint") {
+      setMode("learn");
+      return;
+    }
+    if (state.mode === "send") {
+      context.send.reset();
+      context.render();
+      return;
+    }
+    newRound(false);
   }
 
   function handleKeydown(event) {
-    if (state.onboardingOpen || state.lettersOpen) return;
+    if (state.onboardingOpen || state.lettersOpen || state.roundPaused) return;
     const target = event.target;
     if (target instanceof Element && target.closest("button, input, textarea, a, [popover]")) return;
 
     if (event.code === "Space") {
       event.preventDefault();
       if (state.mode === "send") context.send.playTarget();
-      else playCurrentSignal({ replay: true });
+      else replaySignal();
       return;
     }
     if (event.key === "Backspace" && state.mode !== "send") {
@@ -916,10 +1124,12 @@ export function createTrainerController(context) {
     for (const button of elements.modeButtons) {
       button.addEventListener("click", () => setMode(button.dataset.mode));
     }
-    elements.signalButton.addEventListener("click", () => playCurrentSignal({ replay: true }));
-    elements.replayButton.addEventListener("click", () => playCurrentSignal({ replay: true }));
+    elements.signalButton.addEventListener("click", replaySignal);
+    elements.replayButton.addEventListener("click", replaySignal);
     elements.mainAction.addEventListener("click", showHintOrAdvance);
-    elements.introHear.addEventListener("click", () => playCurrentSignal());
+    elements.introHear.addEventListener("click", () => {
+      if (!isSounding()) playCurrentSignal();
+    });
     elements.introGotIt.addEventListener("click", dismissIntro);
     elements.sessionContinue.addEventListener("click", startSession);
     document.addEventListener("keydown", handleKeydown);
@@ -931,10 +1141,13 @@ export function createTrainerController(context) {
     clearSignalAnimation,
     currentSpeed,
     focusTrainer,
+    isSounding,
     newRound,
+    pauseRound,
     playCurrentSignal,
     render,
     resetSession,
+    resumeRound,
     setDifficulty,
     setMode,
     setTheme,

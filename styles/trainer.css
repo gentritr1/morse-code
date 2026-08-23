@@ -959,6 +959,11 @@
   font-size: 0.6875rem;
 }
 
+/* Disabled during the demonstration: not merely unclickable, untouchable. */
+.send-pad:disabled {
+  pointer-events: none;
+}
+
 .send-pad[data-pressing="true"] {
   background: var(--theme-accent);
   color: var(--theme-on-accent);
@@ -1107,7 +1112,24 @@
   font-family: inherit;
   font-size: 1.125rem;
   font-weight: 700;
-  transition: var(--theme-crossfade), transform var(--motion-press) var(--ease-out);
+  transition:
+    var(--theme-crossfade),
+    transform var(--motion-press) var(--ease-out),
+    opacity 100ms var(--ease-out);
+}
+
+/*
+ * While the signal is still arriving the keys stay exactly where they are and
+ * simply go quiet: dimming costs no layout, so nothing moves under the hand at
+ * the moment the answer window opens.
+ */
+.answer-key[aria-disabled="true"] {
+  opacity: 0.4;
+}
+
+.answer-key.was-correct[aria-disabled="true"],
+.answer-key.was-incorrect[aria-disabled="true"] {
+  opacity: 1;
 }
 
 .answer-key:active {

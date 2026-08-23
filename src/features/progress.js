@@ -4,6 +4,7 @@ import {
   KOCH_ORDER,
   LAPSE_HALFLIFE,
   MIN_EFFECTIVE_WPM,
+  SEED_SESSION_PHASES,
   SESSION_PHASES,
   SESSION_ROUNDS,
   SPACING_CLEAN_STREAK,
@@ -15,6 +16,7 @@ import { wordsFrom } from "../data/words.js";
 import { cleanAccuracy, retentionWindows } from "./events.js";
 import {
   confForLetter,
+  confusionKey,
   decayed,
   instantRate,
   isInstant,
@@ -24,6 +26,7 @@ import {
   median,
   poolBaseline,
   recallRisk,
+  topCause,
   topPair,
 } from "./performance-profile.js";
 
@@ -63,10 +66,14 @@ export function createProgress() {
 export const SEED_QUEUE = Object.freeze([
   Object.freeze({ type: "intro", letter: KOCH_ORDER[0] }),
   Object.freeze({ type: "intro", letter: KOCH_ORDER[1] }),
-  Object.freeze({ type: "letter", text: KOCH_ORDER[0] }),
-  Object.freeze({ type: "letter", text: KOCH_ORDER[1] }),
-  Object.freeze({ type: "letter", text: KOCH_ORDER[1] }),
-  Object.freeze({ type: "letter", text: KOCH_ORDER[0] }),
+  Object.freeze({ type: "letter", text: KOCH_ORDER[0], phase: "arrive" }),
+  Object.freeze({ type: "letter", text: KOCH_ORDER[1], phase: "arrive" }),
+  Object.freeze({ type: "letter", text: KOCH_ORDER[1], phase: "arrive" }),
+  Object.freeze({ type: "letter", text: KOCH_ORDER[0], phase: "arrive" }),
+  // Repair on the seed session is the same two characters contrasted once
+  // more: there is no history yet for a confusion pair to come out of.
+  Object.freeze({ type: "letter", text: KOCH_ORDER[1], phase: "repair" }),
+  Object.freeze({ type: "letter", text: KOCH_ORDER[0], phase: "repair" }),
 ]);
 
 export function needsSeeding(progress) {
@@ -300,10 +307,20 @@ function burstText(progress, random = Math.random) {
   return letters.join("");
 }
 
+/**
+ * The phase table this session runs on. The first sitting spends its Arrive
+ * phase on the opening run and only needs two Repair rounds after it, so it
+ * finishes in the same twenty rounds as every session that follows.
+ */
+export function phaseTable(seeded = false) {
+  return seeded ? SEED_SESSION_PHASES : SESSION_PHASES;
+}
+
 /** Which part of the session a round belongs to. The rail shows only this. */
-export function phaseFor(round = 1) {
+export function phaseFor(round = 1, seeded = false) {
+  const table = phaseTable(seeded);
   const clamped = Math.max(1, Math.min(SESSION_ROUNDS, Math.floor(round) || 1));
-  return SESSION_PHASES.find((phase) => clamped <= phase.through) ?? SESSION_PHASES[SESSION_PHASES.length - 1];
+  return table.find((phase) => clamped <= phase.through) ?? table[table.length - 1];
 }
 
 /* ------------------------------------------------------------ the policy -- */
@@ -313,7 +330,7 @@ export function phaseFor(round = 1) {
  * fixed priority, and only ever for a round that really was chosen for one.
  */
 function roundReason(profile, letter, options) {
-  const { now = Date.now(), pair = null } = options;
+  const { now = Date.now(), pair = null, cause = null } = options;
   const metrics = profile.letters[letter];
   if (!metrics) return null;
 
@@ -323,14 +340,20 @@ function roundReason(profile, letter, options) {
   if (metrics.phase === "rel") return "slipped earlier";
   if (isOverdue(metrics, now)) return "back from yesterday";
 
+  // A repair round exists *because* of the pair, and the cause says which of
+  // three different faults it is — so it outranks the generic pace line, which
+  // for a hesitation round would only be saying the same thing less usefully.
+  if (pair) {
+    const other = pair[0] === letter ? pair[1] : pair[0];
+    if (cause === "discrimination") return `${pair[0]} and ${pair[1]} blur together`;
+    if (cause === "hesitation") return `you know ${pair[0]}, but slowly`;
+    if (cause === "uncertain") return `${pair[0]} slipped, even with a replay`;
+    return `you mix this with ${other}`;
+  }
+
   const own = median(metrics.rts);
   const baseline = letterBaseline(profile, letter);
   if (own !== null && baseline > 0 && own > baseline * 2) return "slow last time";
-
-  if (pair) {
-    const other = pair[0] === letter ? pair[1] : pair[0];
-    return `you mix this with ${other}`;
-  }
   return null;
 }
 
@@ -341,6 +364,7 @@ function letterRound(profile, letter, phase, options = {}) {
     text: letter,
     phase: phase.id,
     contrast: options.pair ?? null,
+    cause: options.cause ?? null,
     retry: Boolean(options.retry),
     reason: withReason ? roundReason(profile, letter, options) : null,
   };
@@ -361,19 +385,20 @@ export function pickRound({ profile, progress, events = [], history = {}, random
     retries = [],
     wasReady = true,
   } = history;
-  const phase = phaseFor(baseRound);
+  const seeding = needsSeeding(progress);
+  const phase = phaseFor(baseRound, history.seeded ?? seeding);
   const order = ranked(profile, progress, now);
 
   // The opening run is fixed: teach both starting characters, then contrast
   // them. It overrides everything, including a retry, because nothing has been
   // answered yet for a retry to exist.
-  if (needsSeeding(progress)) {
+  if (seeding) {
     const item = SEED_QUEUE[history.seedIndex ?? 0];
     if (item && item.type === "intro") {
       return { type: "intro", text: item.letter, letter: item.letter, phase: "arrive", seed: true, unlock: false, reason: null, contrast: null, retry: false };
     }
     if (item) {
-      return { type: "letter", text: item.text, phase: "arrive", seed: true, reason: null, contrast: null, retry: false };
+      return { type: "letter", text: item.text, phase: item.phase, seed: true, reason: null, contrast: null, retry: false };
     }
   }
 
@@ -411,7 +436,31 @@ export function pickRound({ profile, progress, events = [], history = {}, random
   if (phase.id === "repair") {
     const index = Math.max(0, baseRound - 5) % 2;
     const pair = topPair(profile, now, unlockedLetters(progress));
-    if (pair) return letterRound(profile, pair[index], phase, { now, pair });
+    if (pair) {
+      const key = confusionKey(pair[0], pair[1]);
+      const cause = topCause(profile, key);
+      // Not everything that looks like a confusion is one. A pair the learner
+      // only ever misses after a replay has not been discriminated at all yet,
+      // so it is re-taught once before being drilled; a pair they get right
+      // when given time is a speed problem, and alternating the two characters
+      // would drill the wrong thing.
+      if (cause === "uncertain" && history.pairRefreshed !== key) {
+        return {
+          type: "intro",
+          text: pair[0],
+          letter: pair[0],
+          phase: phase.id,
+          unlock: false,
+          refresh: true,
+          pairKey: key,
+          reason: null,
+          contrast: pair,
+          retry: false,
+        };
+      }
+      if (cause === "hesitation") return letterRound(profile, pair[0], phase, { now, pair, cause });
+      return letterRound(profile, pair[index], phase, { now, pair, cause });
+    }
     const two = order.length > 1 ? [order[0], order[1]] : padPick([], 2, order);
     return letterRound(profile, two[index] ?? order[0], phase, { now });
   }

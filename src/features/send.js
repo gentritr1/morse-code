@@ -1,6 +1,7 @@
 import { SEND_BAND_MIN, SPEEDS } from "../config.js";
 import { MORSE, visiblePattern } from "../data/morse.js";
-import { speedTiming } from "../platform/morse-audio.js";
+import { scheduleDurationMs, speedTiming } from "../platform/morse-audio.js";
+import { PLAYBACK_LEAD_MS } from "../ui/signals.js";
 import { classify, fitUnit, recordSend, sendAggregate } from "./performance-profile.js";
 import { nextTarget, unlockedLetters } from "./progress.js";
 
@@ -27,6 +28,7 @@ const MAX_MARKS = 12;
  */
 export function createSendController(context) {
   const { state, elements, audio, announce } = context;
+  let playbackTimer = null;
 
   function targetPattern() {
     return MORSE[state.sendTarget];
@@ -81,7 +83,13 @@ export function createSendController(context) {
     elements.sendDecode.textContent = state.sendEvaluated ? state.sendTarget : "_";
     renderReadout();
 
-    elements.sendPad.disabled = state.sendEvaluated || state.sendMarks.length >= MAX_MARKS;
+    // The demonstration finishes before the learner's own key opens. Keying
+    // over the target is not practice: it is two fists on one frequency, and
+    // the timeline it produces is not the learner's.
+    elements.sendPad.disabled = state.sendPlaying
+      || state.sendEvaluated
+      || state.sendMarks.length >= MAX_MARKS;
+    elements.sendPadLabel.textContent = state.sendPlaying ? "Listen first…" : "Tap / hold";
     elements.sendClear.disabled = !state.sendMarks.length || state.sendEvaluated;
     elements.sendCheck.disabled = !state.sendEvaluated && !state.sendMarks.length;
     elements.sendCheck.textContent = state.sendEvaluated ? "Next" : "Check";
@@ -95,8 +103,21 @@ export function createSendController(context) {
       : `Rhythm · ${aggregate.clean} of ${SEND_BAND_MIN} clean sends`;
   }
 
+  /** Clears the listening lamp, whether playback ended or was cut short. */
+  function stopPlayback() {
+    if (playbackTimer) window.clearTimeout(playbackTimer);
+    playbackTimer = null;
+    if (!state.sendPlaying) return;
+    state.sendPlaying = false;
+    context.render();
+  }
+
   function playTarget() {
     const pattern = targetPattern();
+    // A second demonstration laid over the first is the same fault as a
+    // replay during a live signal, and it is dropped the same way.
+    if (state.sendPlaying) return;
+    const durationMs = scheduleDurationMs(state.sendTarget, speed());
     if (!audio.playPattern(pattern, speed())) {
       state.sendStatus = "Audio unavailable · the target appears after you check";
       state.sendOutcome = "retry";
@@ -104,12 +125,19 @@ export function createSendController(context) {
       announce("Send audio is unavailable.");
       return;
     }
+    state.sendPlaying = true;
+    context.render();
+    playbackTimer = window.setTimeout(() => {
+      playbackTimer = null;
+      state.sendPlaying = false;
+      context.render();
+    }, PLAYBACK_LEAD_MS + durationMs);
     announce(`Target played. It contains ${pattern.length} ${pattern.length === 1 ? "mark" : "marks"}.`);
   }
 
   function beginPress(pointerId = null) {
     // Free-form: the learner may key more or fewer marks than the target holds.
-    if (state.sendEvaluated || state.sendMarks.length >= MAX_MARKS) return;
+    if (state.sendPlaying || state.sendEvaluated || state.sendMarks.length >= MAX_MARKS) return;
     if (state.sendPressStartedAt) return;
     state.sendPressStartedAt = performance.now();
     state.sendPointerId = pointerId;
@@ -287,7 +315,15 @@ export function createSendController(context) {
     playTarget();
   }
 
+  /** A fresh target with nothing sounding — what a progress reset leaves behind. */
+  function reset() {
+    stopPlayback();
+    state.sendTarget = nextTarget(unlockedLetters(state.progress), null);
+    clearAttempt();
+  }
+
   function deactivate() {
+    stopPlayback();
     finishPress(true);
     audio.stopTone();
   }
@@ -301,7 +337,12 @@ export function createSendController(context) {
     elements.sendCheck.addEventListener("click", evaluate);
     elements.sendPad.addEventListener("pointerdown", (event) => {
       event.preventDefault();
-      elements.sendPad.setPointerCapture(event.pointerId);
+      try {
+        elements.sendPad.setPointerCapture(event.pointerId);
+      } catch {
+        // A pointer that is already gone cannot be captured; the press is
+        // still valid and `pointerup` on the pad will end it.
+      }
       beginPress(event.pointerId);
     });
     elements.sendPad.addEventListener("pointerup", (event) => {
@@ -331,5 +372,5 @@ export function createSendController(context) {
     });
   }
 
-  return Object.freeze({ activate, bind, deactivate, finishPress, playTarget, render });
+  return Object.freeze({ activate, bind, deactivate, finishPress, playTarget, render, reset, stopPlayback });
 }

@@ -107,6 +107,7 @@ export function createLettersController(context) {
 
   function open() {
     state.lettersOpen = true;
+    context.trainer.pauseRound();
     render();
     elements.letters.focus?.({ preventScroll: true });
     announce("Letters open.");
@@ -116,6 +117,7 @@ export function createLettersController(context) {
     if (!state.lettersOpen) return;
     state.lettersOpen = false;
     render();
+    context.trainer.resumeRound();
     if (moveFocus) elements.lettersToggle.focus({ preventScroll: true });
   }
 

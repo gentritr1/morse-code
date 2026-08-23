@@ -104,6 +104,9 @@ export function createSettingsController(context) {
       const open = event.newState === "open";
       elements.settingsButton.setAttribute("aria-expanded", String(open));
       if (open) {
+        // Settings is not a live round: the signal stops and the clock stops
+        // with it, so nothing is scored against a learner who is looking away.
+        context.trainer.pauseRound();
         position();
         window.requestAnimationFrame(() => {
           elements.themeButtons
@@ -114,6 +117,7 @@ export function createSettingsController(context) {
       }
       disarmReset();
       render();
+      context.trainer.resumeRound();
       if (document.activeElement === document.body) {
         elements.settingsButton.focus({ preventScroll: true });
       }
