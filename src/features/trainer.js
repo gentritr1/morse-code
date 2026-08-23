@@ -122,25 +122,33 @@ export function createTrainerController(context) {
    * @starting-style pop replay.
    */
   function renderTypedAnswer() {
-    const length = Math.max(1, currentText().length);
+    const text = currentText();
+    const length = Math.max(1, text.length);
     const slots = [];
     for (let index = 0; index < length; index += 1) {
-      slots.push(state.typed[index] ?? "_");
+      // A word gap is structure, not something the learner has to fill in: the
+      // slot is always a gap, whether or not the message has got that far.
+      slots.push(text[index] === " " ? " " : (state.typed[index] ?? "_"));
     }
     const value = slots.join("");
     if (value === renderedAnswer) return;
     // Only the character that just landed pops; the ones already on screen stay put.
-    const newest = renderedAnswer !== null && state.typed.length > renderedAnswer.replace(/_/g, "").length
-      ? state.typed.length - 1
-      : -1;
+    const typedCount = [...state.typed].filter((character) => character !== " ").length;
+    const settled = renderedAnswer === null
+      ? 0
+      : [...renderedAnswer].filter((character) => character !== "_" && character !== " ").length;
+    let newest = renderedAnswer !== null && typedCount > settled ? state.typed.length - 1 : -1;
+    while (newest > 0 && text[newest] === " ") newest -= 1;
     renderedAnswer = value;
 
     elements.typedAnswer.replaceChildren(
       ...slots.map((character, index) => {
         const slot = document.createElement("span");
-        slot.className = character === "_" ? "typed-slot empty" : "typed-slot";
+        slot.className = character === "_"
+          ? "typed-slot empty"
+          : character === " " ? "typed-slot gap" : "typed-slot";
         if (index === newest) slot.classList.add("typed-value");
-        slot.textContent = character;
+        slot.textContent = character === " " ? "\u00a0" : character;
         return slot;
       }),
     );
@@ -241,6 +249,22 @@ export function createTrainerController(context) {
     elements.arrivalSecondary.hidden = state.arrivalLines.length < 2;
     elements.sessionTag.textContent = state.sessionMilestone ? "Milestone" : "Session done";
     elements.sessionSentence.textContent = state.sessionSentence;
+    // The note is what the message meant. It is said once, on the card, in the
+    // session it arrived — the drawer only ever lists what was decoded.
+    // When a milestone takes the last sentence slot the intercept clause is
+    // dropped; the note must go with it, or it explains a message never named.
+    const intercepted = Boolean(state.sessionTransmission)
+      && state.sessionSentence.includes("You intercepted transmission");
+    elements.sessionNote.hidden = !intercepted;
+    elements.sessionNote.textContent = intercepted ? state.sessionTransmission.note : "";
+
+    // An unknown transmission announces itself: it is not another word round,
+    // it is a message from a station that is not us.
+    const transmission = state.roundType === "signal" ? state.transmission : null;
+    elements.signalTag.hidden = !transmission;
+    elements.signalTag.textContent = transmission
+      ? `UNKNOWN TRANSMISSION · no. ${transmission.num}`
+      : "";
 
     elements.statusLine.textContent = state.status;
     if (state.sprintBeatBest) {
@@ -314,6 +338,7 @@ export function createTrainerController(context) {
     if (state.mode === "send") context.send.deactivate();
     state.mode = mode;
     state.introLetter = null;
+    state.transmission = null;
     state.sessionDone = false;
     state.typed = "";
     state.feedback = "neutral";
@@ -425,7 +450,10 @@ export function createTrainerController(context) {
       }
     }
 
-    if (!audio.playText(text, speed)) {
+    // The bed belongs to the transmission, not to a setting: only a message
+    // from somewhere else arrives over static.
+    const ambience = !state.introLetter && (state.roundType === "signal" || state.roundType === "contact");
+    if (!audio.playText(text, speed, { ambience })) {
       state.status = "Audio unavailable · follow the visible signal";
       state.revealMarks = true;
       context.render();
@@ -438,11 +466,19 @@ export function createTrainerController(context) {
    * say when a round did not count, or the honesty of the schedule is invisible
    * and a page they walked away from looks like a character they forgot.
    */
-  function answerStatus({ target, hit, group, interrupted, assisted, heldBack, firstRead }) {
+  function answerStatus({ target, hit, group, interrupted, assisted, heldBack, firstRead, transmission }) {
     if (interrupted) {
       return hit
         ? `${target} · not counted — you left the page`
         : "Not counted — you left the page";
+    }
+    // A transmission is archived by being decoded, so its feedback says what
+    // was decoded and where it came from — never a score.
+    if (transmission) {
+      if (!hit) return `The signal was ${target}. It will come through again.`;
+      return assisted
+        ? `${target} · archived, with help.`
+        : `${target} · origin: ${transmission.origin}. Archived.`;
     }
     if (!hit) return `Not quite · it was ${target}`;
     // The opening transmission, read back. It is true exactly once.
@@ -546,7 +582,8 @@ export function createTrainerController(context) {
   function roundStatus() {
     if (state.mode === "sprint") return "Next signal";
     if (state.roundReason) return `Listening · ${state.roundReason}`;
-    if (state.target.length > 1) return `Listening · ${state.target.length} letters`;
+    const letters = [...state.target].filter((character) => character !== " ").length;
+    if (letters > 1) return `Listening · ${letters} letters`;
     return "Listening";
   }
 
@@ -619,6 +656,9 @@ export function createTrainerController(context) {
 
     for (let index = 0; index < target.length; index += 1) {
       const letter = target[index];
+      // A word gap is not a character: it is never typed, never scored, and
+      // never logged as an attempt on a letter that does not exist.
+      if (letter === " ") continue;
       const letterHit = letter === typed[index];
       if (group) {
         recordContext(state.performanceProfile, letter, {
@@ -658,6 +698,19 @@ export function createTrainerController(context) {
       });
     }
 
+    // Decoding it is what archives it. Help still archives — the message is
+    // read either way — but only an unaided decode is recorded as independent.
+    const transmission = state.roundType === "signal" ? state.transmission : null;
+    if (transmission && hit && !interrupted) {
+      const archive = { ...(state.progress.archive ?? {}) };
+      if (!archive[transmission.id]) {
+        archive[transmission.id] = { ts: now, independent: !assisted };
+        state.progress.archive = archive;
+        state.sessionTransmission = transmission;
+        writeProgress(storage, state.progress);
+      }
+    }
+
     if (group && hit && !assisted && !interrupted) {
       recordWordTime(state.performanceProfile, responseMs);
       // A whole word, read with no replay, no hint and no interruption. The
@@ -684,7 +737,7 @@ export function createTrainerController(context) {
     state.revealMarks = true;
     state.feedback = interrupted ? "neutral" : hit ? "correct" : "incorrect";
     state.status = answerStatus({
-      target, hit, group, interrupted, assisted, heldBack, firstRead: state.roundFirstRead,
+      target, hit, group, interrupted, assisted, heldBack, firstRead: state.roundFirstRead, transmission,
     });
     if (!interrupted) {
       state.streak = hit ? state.streak + 1 : 0;
@@ -728,6 +781,9 @@ export function createTrainerController(context) {
     }
 
     state.typed += letter;
+    // The gaps in a transmission are heard, not typed: the cursor steps over
+    // them so the learner only ever answers with characters.
+    while (state.target[state.typed.length] === " ") state.typed += " ";
     if (state.typed.length < state.target.length) {
       context.render();
       return;
@@ -737,7 +793,9 @@ export function createTrainerController(context) {
 
   function backspace() {
     if (state.locked || cardOpen() || !state.typed) return;
-    state.typed = state.typed.slice(0, -1);
+    let typed = state.typed;
+    while (typed.endsWith(" ")) typed = typed.slice(0, -1);
+    state.typed = typed.slice(0, -1);
     context.render();
   }
 
@@ -891,6 +949,7 @@ export function createTrainerController(context) {
       events: state.events,
       spacing: state.spacingDirection,
       milestone: state.sessionMilestone,
+      transmission: state.sessionTransmission,
       now,
     });
     context.render();
@@ -903,6 +962,9 @@ export function createTrainerController(context) {
   function startSession() {
     state.sessionDone = false;
     state.sessionMilestone = null;
+    state.sessionTransmission = null;
+    state.transmissionServed = false;
+    state.transmission = null;
     state.arrivalPair = null;
     state.sessionAnswered = 0;
     state.sessionExtras = 0;
@@ -927,6 +989,8 @@ export function createTrainerController(context) {
   function startRound(round, playAfterRender) {
     state.roundType = round.type;
     state.target = round.text;
+    state.transmission = round.transmission ?? null;
+    if (round.transmission) state.transmissionServed = true;
     state.roundReason = round.reason ?? null;
     // The one transmission whose successful decode has its own sentence: the
     // learner heard it as noise a few rounds earlier.
@@ -943,7 +1007,10 @@ export function createTrainerController(context) {
     // Coverage is counted when a character is served, not when it is answered —
     // and only inside the guided session a sprint is not part of.
     if (state.mode === "learn") {
-      for (const letter of round.text) state.served[letter] = (state.served[letter] ?? 0) + 1;
+      for (const letter of round.text) {
+        if (letter === " ") continue;
+        state.served[letter] = (state.served[letter] ?? 0) + 1;
+      }
     }
     state.typed = "";
     state.revealMarks = false;
@@ -1007,6 +1074,7 @@ export function createTrainerController(context) {
         seedIndex: state.seedIndex,
         seeded: state.seedRun,
         openWith: state.arrivalPair?.[0] ?? null,
+        transmissionServed: state.transmissionServed,
         now,
       },
     });
@@ -1178,6 +1246,9 @@ export function createTrainerController(context) {
     state.sessionExtras = 0;
     state.sessionDone = false;
     state.sessionMilestone = null;
+    state.sessionTransmission = null;
+    state.transmissionServed = false;
+    state.transmission = null;
     state.contactOpen = false;
     state.roundFirstRead = false;
     state.arrivalOpen = false;

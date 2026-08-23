@@ -120,7 +120,38 @@ export class MorseAudio {
     return performance.now() < this.#endsAtMs;
   }
 
-  #playSchedule(marks) {
+  /**
+   * The static bed. A transmission from somewhere else arrives over a carrier,
+   * and the hiss under it is what makes it a signal rather than a tone the app
+   * produced. It is atmosphere and carries no information — the marks are the
+   * message — so it exists only under transmissions, at a level well below the
+   * tone, and it is pushed onto the same node list so `stop()` takes it with
+   * everything else.
+   */
+  #playStatic(context, startAt, durationSeconds) {
+    const lead = 0.05;
+    const tail = 0.25;
+    const seconds = Math.min(durationSeconds + lead + tail, 20);
+    const length = Math.max(1, Math.ceil(seconds * context.sampleRate));
+    const buffer = context.createBuffer(1, length, context.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let index = 0; index < length; index += 1) data[index] = Math.random() * 2 - 1;
+
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    const filter = context.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 950;
+    filter.Q.value = 0.5;
+    const gain = context.createGain();
+    gain.gain.value = 0.012;
+    source.connect(filter).connect(gain).connect(context.destination);
+    source.start(Math.max(context.currentTime, startAt - lead));
+    source.stop(startAt + durationSeconds + tail);
+    this.#nodes.push(source);
+  }
+
+  #playSchedule(marks, ambience = false) {
     try {
       this.stop();
       const context = this.#ensureContext();
@@ -150,6 +181,12 @@ export class MorseAudio {
         // had already opened.
         this.#endsAtMs = Math.max(this.#endsAtMs, baseMs + mark.start + mark.duration);
       }
+      // The bed spans the transmission, but never the answer window: the guard
+      // is still the last tone, so the keys open exactly when the message ends.
+      if (ambience) {
+        const last = marks[marks.length - 1];
+        this.#playStatic(context, base, (last.start + last.duration) / 1000);
+      }
       return true;
     } catch {
       return false;
@@ -170,11 +207,15 @@ export class MorseAudio {
     return this.#playSchedule(marks);
   }
 
-  /** One or more characters with Farnsworth spacing between them. */
-  playText(text, speed) {
+  /**
+   * One or more characters with Farnsworth spacing between them. `ambience`
+   * lays the static bed underneath: it belongs to the transmission's identity,
+   * not to a setting, so only the caller that is sending one asks for it.
+   */
+  playText(text, speed, { ambience = false } = {}) {
     const marks = scheduleText(text, speed);
     if (!marks.length) return false;
-    return this.#playSchedule(marks);
+    return this.#playSchedule(marks, ambience);
   }
 
   startTone() {

@@ -113,6 +113,11 @@ const state = {
   sessionSentence: "",
   sessionMilestone: null,
   sessionExtras: 0,
+  // The one unknown transmission a session may deliver: the round being played,
+  // whether this sitting has already had it, and the one that was decoded.
+  transmission: null,
+  transmissionServed: false,
+  sessionTransmission: null,
   // The opening transmission and the returning-visit greeting. Both are cards
   // in the stage slot rather than rounds: neither is ever scored.
   contactOpen: false,

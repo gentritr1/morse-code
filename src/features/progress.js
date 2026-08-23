@@ -18,6 +18,7 @@ import {
   STORAGE_KEYS,
   TREND_MIN_DELTA_MS,
 } from "../config.js";
+import { availableTransmissions, isTransmissionId, transmissionNumber } from "../data/transmissions.js";
 import { wordsFrom } from "../data/words.js";
 import { cleanAccuracy, latencyTrend, retentionWindows, survivedNight } from "./events.js";
 import { normalisePlacement } from "./placement.js";
@@ -86,7 +87,26 @@ export function createProgress() {
     // Earned once each, from evidence, and never re-announced.
     milestones: {},
     unaidedWords: 0,
+    // The transmissions that have actually been decoded. A message enters the
+    // archive by being read, never by being unlocked.
+    archive: {},
   };
+}
+
+/**
+ * The archive holds catalog ids only, each with when it was decoded and whether
+ * the learner needed help. A record that names a transmission we do not publish
+ * is dropped rather than trusted.
+ */
+function readArchive(source) {
+  const out = {};
+  if (!source || typeof source !== "object" || Array.isArray(source)) return out;
+  for (const [id, entry] of Object.entries(source)) {
+    if (!isTransmissionId(id) || !entry || typeof entry !== "object") continue;
+    const ts = Math.floor(Number(entry.ts));
+    out[id] = { ts: Number.isFinite(ts) && ts > 0 ? ts : 0, independent: Boolean(entry.independent) };
+  }
+  return out;
 }
 
 /** Milestones are timestamps under known names. Anything else is dropped. */
@@ -162,6 +182,7 @@ export function readProgress(storage) {
     callsign: CALLSIGN_PATTERN.test(stored.callsign) ? stored.callsign : genCallsign(),
     milestones: readMilestones(stored.milestones),
     unaidedWords: Math.max(0, Math.floor(Number(stored.unaidedWords)) || 0),
+    archive: readArchive(stored.archive),
   };
 }
 
@@ -176,6 +197,7 @@ export function writeProgress(storage, progress) {
     callsign: CALLSIGN_PATTERN.test(progress.callsign) ? progress.callsign : genCallsign(),
     milestones: readMilestones(progress.milestones),
     unaidedWords: Math.max(0, Math.floor(Number(progress.unaidedWords)) || 0),
+    archive: readArchive(progress.archive),
   });
 }
 
@@ -425,6 +447,26 @@ function roundReason(profile, letter, options) {
   return null;
 }
 
+/**
+ * The one transmission this session may deliver, or nothing. At most one per
+ * sitting: a message that arrives every few rounds is a exercise type, and the
+ * point of these is that they are rare enough to be an event.
+ */
+export function nextTransmission(progress, history = {}) {
+  if (history.transmissionServed) return null;
+  if (progress.newPaused) return null;
+  if (needsSeeding(progress)) return null;
+  const [entry] = availableTransmissions(unlockedLetters(progress), progress.archive ?? {});
+  if (!entry) return null;
+  return {
+    id: entry.id,
+    num: transmissionNumber(entry.id),
+    text: entry.text,
+    origin: entry.origin,
+    note: entry.note,
+  };
+}
+
 function letterRound(profile, letter, phase, options = {}) {
   const withReason = phase.id === "arrive" || phase.id === "repair" || options.retry;
   return {
@@ -557,6 +599,22 @@ export function pickRound({ profile, progress, events = [], history = {}, random
   }
 
   if (phase.id === "use" && progress.unlocked >= GROUP_UNLOCK_AT) {
+    // Learning gates the world. A transmission is a real message from a station
+    // that is not us, so it can only arrive once every character inside it has
+    // genuinely been taught — and never while new material is braked, because a
+    // learner already behind on reviews has not earned a new place to look.
+    const transmission = nextTransmission(progress, history);
+    if (transmission) {
+      return {
+        type: "signal",
+        text: transmission.text,
+        phase: phase.id,
+        transmission,
+        contrast: null,
+        reason: null,
+        retry: false,
+      };
+    }
     const words = wordsFrom(unlockedLetters(progress));
     if (words.length >= 3) {
       const word = words[Math.floor(random() * words.length)] ?? words[0];
@@ -807,13 +865,22 @@ function trendClause(events, now) {
  */
 export function sessionSentence(profile, progress, options = {}) {
   const {
-    heldBack = [], lapsed = [], events = [], spacing = null, milestone = null, now = Date.now(),
+    heldBack = [], lapsed = [], events = [], spacing = null, milestone = null,
+    transmission = null, now = Date.now(),
   } = options;
   const sentences = [...instantClause(profile, progress)];
 
   if (heldBack.length) sentences.push(`${heldBack[0]} answered, but slowly — it comes back sooner.`);
   if (lapsed.length) sentences.push(`${lapsed[0]} slipped and was relearned.`);
   if (milestone) sentences.push(milestone);
+  // A message from somewhere else, read for the first time. It outranks the
+  // scheduler's own reporting because it is the only clause about the world
+  // rather than about the learner's own characters.
+  if (transmission) {
+    sentences.push(
+      `You intercepted transmission no. ${transmission.num} — ${transmission.text.toLowerCase()}, from ${transmission.origin}.`,
+    );
+  }
   if (progress.newPaused) {
     const settling = settlingLetter(profile, progress);
     if (settling) sentences.push(`New letters wait until ${settling} settles.`);

@@ -1,6 +1,12 @@
 import { KOCH_ORDER } from "../config.js";
 import { MORSE, visiblePattern } from "../data/morse.js";
 import {
+  archiveHeading,
+  archiveRemaining,
+  archivedTransmissions,
+  transmissionNumber,
+} from "../data/transmissions.js";
+import {
   label as letterLabel,
   letterBaseline,
   recognitionScore,
@@ -85,6 +91,36 @@ export function createLettersController(context) {
     return row;
   }
 
+  /**
+   * The archive is a section of the drawer, not a screen: the messages the
+   * learner has actually decoded, in catalog order, with nothing to press. The
+   * note each one carries is spoken once, on the session-end card, and never
+   * repeated here — a list that explains itself twice is a database.
+   */
+  function renderArchive() {
+    const archive = state.progress.archive ?? {};
+    const held = archivedTransmissions(archive);
+    elements.lettersArchive.hidden = held.length === 0;
+    elements.lettersArchiveCount.textContent = archiveHeading(archive);
+    elements.lettersArchiveRemaining.textContent = archiveRemaining(archive);
+
+    const renderKey = held.map((entry) => entry.id).join(",");
+    if (elements.lettersArchiveList.dataset.renderKey === renderKey) return;
+    elements.lettersArchiveList.replaceChildren(...held.map((entry) => {
+      const row = document.createElement("li");
+      const num = document.createElement("span");
+      num.className = "archive-number";
+      num.textContent = `no. ${transmissionNumber(entry.id)}`;
+      const text = document.createElement("strong");
+      text.textContent = entry.text.toLowerCase();
+      const origin = document.createElement("small");
+      origin.textContent = entry.origin;
+      row.append(num, text, origin);
+      return row;
+    }));
+    elements.lettersArchiveList.dataset.renderKey = renderKey;
+  }
+
   function render() {
     const { progress } = state;
     elements.lettersCount.textContent = `Letters · ${progress.unlocked} / ${KOCH_ORDER.length}`;
@@ -100,6 +136,8 @@ export function createLettersController(context) {
     const memory = cabinMemory(state.performanceProfile, state.progress, state.events);
     elements.lettersMemory.hidden = !memory;
     elements.lettersMemory.textContent = memory ? `${formatDay(memory.ts)} · ${memory.text}` : "";
+
+    renderArchive();
 
     elements.sessionScore.textContent = `${state.correct} / ${state.total}`;
     elements.bestScore.textContent = `Best ${state.sprintBest}`;

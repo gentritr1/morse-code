@@ -92,7 +92,14 @@
               <small id="lettersNext">Next unlock · 0 of 10 right</small>
               <small class="letters-caption">Brighter signals will last longer.</small>
             </div>
-            <ol class="letters-list" id="lettersList"></ol>
+            <div class="letters-scroll" id="lettersScroll">
+              <ol class="letters-list" id="lettersList"></ol>
+              <section class="letters-archive" id="lettersArchive" aria-labelledby="lettersArchiveCount" hidden>
+                <strong id="lettersArchiveCount">Archive · 0 of 12</strong>
+                <ol class="archive-list" id="lettersArchiveList"></ol>
+                <small class="archive-remaining" id="lettersArchiveRemaining"></small>
+              </section>
+            </div>
             <div class="letters-foot">
               <div class="letters-scores">
                 <span>Score <strong id="sessionScore">0 / 0</strong></span>
@@ -139,6 +146,7 @@
             <div class="intro-card session-card" id="sessionCard" hidden>
               <span class="intro-tag" id="sessionTag">Session done</span>
               <p class="session-sentence" id="sessionSentence"></p>
+              <p class="session-note" id="sessionNote" hidden></p>
               <div class="intro-actions">
                 <button class="primary-action" type="button" id="sessionContinue">Keep going</button>
               </div>
@@ -155,6 +163,7 @@
                 </div>
               </div>
               <p class="status-line" id="statusLine">Listening</p>
+              <p class="signal-tag" id="signalTag" hidden></p>
               <button class="signal-button" type="button" id="signalButton" aria-label="Replay the current Morse signal">
                 <span class="signal-text" id="signalText"></span>
                 <span class="signal-bars" id="signalBars" aria-hidden="true"></span>

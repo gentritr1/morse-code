@@ -43,6 +43,26 @@
     transform: translateY(0);
   }
 
+  /*
+   * The sheet is already a scroller, so the map and the archive both return to
+   * normal flow here: nothing needs to be lifted out of the column's height
+   * when the column itself is free to be as tall as its contents.
+   */
+  .letters-scroll {
+    position: static;
+    flex: 0 0 auto;
+    min-height: auto;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .letters-archive {
+    position: static;
+    margin-top: 0;
+  }
+
   .letters-list li {
     min-height: 2.25rem;
     grid-template-columns: 1.5rem 4.5rem minmax(2rem, 1fr) 6rem;
