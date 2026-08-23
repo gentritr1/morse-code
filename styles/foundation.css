@@ -27,6 +27,9 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --motion-mark-in: 60ms;
   --motion-press: 140ms;
+  /* The bar's controls are small and sit still: their press settles a touch
+     faster than the machine's big keys, which have further to travel. */
+  --motion-press-bar: 120ms;
   --motion-exit: 150ms;
   --motion-popover: 160ms;
   --motion-mark-out: 160ms;
@@ -157,43 +160,11 @@ button:disabled {
   padding: var(--space-4) max(var(--space-5), env(safe-area-inset-right)) max(var(--space-5), env(safe-area-inset-bottom)) max(var(--space-5), env(safe-area-inset-left));
 }
 
-/* One row, always: identity, mode, settings. It never wraps. */
-.app-bar {
-  width: min(100%, 96rem);
-  margin: 0 auto;
-  padding: max(var(--space-3), env(safe-area-inset-top)) max(var(--space-5), env(safe-area-inset-right)) var(--space-3) max(var(--space-5), env(safe-area-inset-left));
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: var(--space-3);
-  border-bottom: 1px solid var(--shell-border);
-}
-
-.app-identity {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.identity-signal {
-  color: var(--shell-accent);
-  font-family: "DM Mono", "Courier New", monospace;
-  font-size: 1.125rem;
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-}
-
-.app-identity strong {
-  font-size: 1rem;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.mode-control {
-  margin-inline-start: auto;
-}
-
+/*
+ * Segmented control, shared by the bar's mode switch and the settings panel's
+ * groups. Declared before the bar so the bar's own 44 px geometry — same
+ * specificity, later in the cascade — wins over these defaults.
+ */
 .segmented-control {
   min-height: 2.75rem;
   display: flex;
@@ -222,21 +193,112 @@ button:disabled {
 
 .segmented-control button:active {
   transform: scale(0.97);
-  background: oklch(0.25 0.012 250);
-}
-
-.segmented-control button[aria-pressed="true"] {
-  background: var(--shell-accent-deep);
-  color: oklch(0.97 0.01 188);
 }
 
 /* An earned mode stays visible and reachable — it just does not switch yet. */
 .segmented-control button[aria-disabled="true"] {
   opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .segmented-control button[aria-disabled="true"]:active {
   transform: none;
+}
+
+/* ═══ App bar ══════════════════════════════════════════════════════════════
+ * One row, always: identity, mode, settings. It never wraps, every pressable
+ * box in it is 44 px tall on one centre line, and its accent is the machine's
+ * `--theme-accent` — the bar is the top edge of the instrument, not a second
+ * product sitting above it. Nothing in this block reaches for the shell's own
+ * teal accent tokens — that colour stops at the bar's bottom rule.
+ */
+.app-bar {
+  width: min(100%, 96rem);
+  /*
+   * A fixed row height rather than padding around the tallest control: that is
+   * what makes 44 the only control height in here. The notch inset is added to
+   * the 4.5 rem instead of eating into it, so the row is always 72 px of bar.
+   */
+  height: calc(4.5rem + env(safe-area-inset-top));
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) max(var(--space-5), env(safe-area-inset-right)) 0 max(var(--space-5), env(safe-area-inset-left));
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--shell-border);
+}
+
+.app-identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* The glyph is the bar's one piece of machine colour; it crossfades with it. */
+.identity-signal {
+  color: var(--theme-accent);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 1.125rem;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  transition: var(--theme-crossfade);
+}
+
+.app-identity strong {
+  font-size: 1rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/*
+ * 44 px outer box, 3 px inset, 36 px buttons: the mismatch the bar used to show
+ * (a 54 px segmented box beside a 44 px icon button) came from padding stacked
+ * around full-height buttons. Here the box owns the height and the buttons fill
+ * what the inset leaves, so both controls measure 44 and share a centre line.
+ */
+.mode-control {
+  height: 2.75rem;
+  margin-inline-start: auto;
+  padding: 0.1875rem;
+  border-radius: var(--radius-md);
+}
+
+.mode-control button {
+  min-height: 0;
+  height: 100%;
+  padding-block: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition:
+    color var(--motion-ui) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out),
+    transform var(--motion-press-bar) var(--ease-out);
+}
+
+/*
+ * No border and no filled slab: the active mode is a wash of the machine's own
+ * accent with the machine's accent on top. The colour switch rides the shared
+ * theme crossfade so the bar changes machine at the same speed the machine does.
+ *
+ * The mix is taken in oklab, not oklch. Mixing 22 % of amber (hue 72) into the
+ * shell surface (hue 250) *in oklch* interpolates the hue the short way round
+ * and lands on 211 — a dark teal chip, the one colour this pass exists to get
+ * out of the bar. oklab crosses the neutral axis instead, so the wash keeps the
+ * machine's own hue at a fraction of its chroma. Measured: oklch mix gave
+ * sRGB 25,53,58 under amber text; oklab gives a warm 43,42,36.
+ */
+.mode-control button[aria-pressed="true"] {
+  border: 0;
+  background: color-mix(in oklab, var(--theme-accent) 22%, var(--shell-surface));
+  color: var(--theme-accent);
+  transition:
+    color var(--motion-crossfade) var(--ease-out),
+    background-color var(--motion-crossfade) var(--ease-out),
+    transform var(--motion-press-bar) var(--ease-out);
 }
 
 .icon-button {
@@ -253,17 +315,18 @@ button:disabled {
   transition:
     background-color var(--motion-ui) var(--ease-out),
     border-color var(--motion-ui) var(--ease-out),
-    transform var(--motion-press) var(--ease-out);
+    transform var(--motion-press-bar) var(--ease-out);
 }
 
 .icon-button svg {
   width: 1.375rem;
   height: 1.375rem;
   fill: none;
-  stroke: var(--shell-accent);
+  stroke: var(--theme-accent);
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+  transition: stroke var(--motion-crossfade) var(--ease-out);
 }
 
 .icon-button:active {
@@ -271,9 +334,10 @@ button:disabled {
 }
 
 .icon-button[aria-expanded="true"] {
-  border-color: var(--shell-accent);
+  border-color: var(--theme-accent);
   background: var(--shell-surface-raised);
 }
+/* ═══ End app bar ══════════════════════════════════════════════════════════ */
 
 /* Settings: an anchored popover with pointers, a bottom sheet on handsets. */
 .settings-panel {
@@ -433,6 +497,20 @@ button:disabled {
   color: var(--lcd-ink);
 }
 
+/*
+ * Below the bar the shell keeps its own quiet teal: the panel is chrome, not
+ * the instrument, and it previews all three machines at once — so it cannot
+ * wear any one of their accents.
+ */
+.settings-panel .segmented-control button[aria-pressed="true"] {
+  background: var(--shell-accent-deep);
+  color: oklch(0.97 0.01 188);
+}
+
+.settings-panel .segmented-control button:active {
+  background: oklch(0.25 0.012 250);
+}
+
 /* Two options, one row, equal halves — a switch, not a menu. */
 .pattern-segments button {
   flex: 1 1 0;
@@ -506,13 +584,22 @@ button:disabled {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .segmented-control button:hover {
+  /*
+   * Only an idle, reachable option answers the pointer: hovering the pressed
+   * one used to wash the accent out of it, and hovering a mode that is not
+   * unlocked yet promised a switch that does not happen.
+   */
+  .segmented-control button:not([aria-pressed="true"], [aria-disabled="true"]):hover {
     color: var(--shell-text);
     background: var(--shell-surface-raised);
   }
 
+  /* Half the machine's accent, reached through alpha rather than through a mix
+     with the border colour: mixing two hues in oklch walks the hue wheel
+     between them and lands somewhere that belongs to neither (amber 72 and the
+     shell border 250 meet at a green 161). */
   .icon-button:hover {
-    border-color: var(--shell-accent-deep);
+    border-color: color-mix(in oklch, var(--theme-accent) 50%, transparent);
     background: var(--shell-surface-raised);
   }
 

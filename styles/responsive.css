@@ -96,7 +96,10 @@
 }
 
 @media (max-width: 39.9375rem) {
+  /* Same controls, same 44 px, shorter row: a handset spends its height on the
+     machine, not on the bar around it. */
   .app-bar {
+    height: calc(3.75rem + env(safe-area-inset-top));
     padding-inline: var(--space-3);
     gap: var(--space-2);
   }
