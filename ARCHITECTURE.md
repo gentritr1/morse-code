@@ -1,6 +1,6 @@
 # Frontend architecture
 
-Morse Trainer is a zero-dependency static web application. It uses native ES modules and modern CSS so it can run from any static host without a build step.
+Morse Trainer is a zero-dependency static web application. It uses native ES modules and modern CSS, so **development needs no build step at all**: a static file server over the repo root is the whole toolchain. Deployment adds one script (`scripts/build.mjs`, no packages) whose only job is caching — see [Deployment](#deployment).
 
 The interface shows exactly one surface: the machine. Everything else — settings, the first-run guide, the letters drawer on handsets — is summoned over it and returns focus when it closes.
 
@@ -146,3 +146,15 @@ Add new Morse data in `src/data/morse.js` and new practice words in `src/data/wo
 Keep platform access behind `src/platform/`. New persistence, account sync, microphone input, or analytics should not be called directly from rendering code.
 
 Prefer a new file when a capability has its own state lifecycle, platform dependency, or testing boundary. Keep code together when it changes for the same reason; file size alone is not an architecture rule.
+
+## Deployment
+
+`node scripts/build.mjs` writes `dist/`, the artifact Vercel serves. It never touches the source tree; `index.html` at the repo root keeps loading `./src/app.js` and `./styles/*.css` unhashed, and every file is still written and read by hand.
+
+**What it does.** It walks the module graph from `src/app.js`, orders it so a module is emitted only after everything it imports, and gives each file a name of the form `name.<8-hex-of-sha256>.ext` taken from the bytes it is about to write. Because the order is dependency-first, a module's hash covers its already-rewritten import specifiers: change a leaf and every importer's hash changes with it, all the way up to `index.html`. Import specifiers, the stylesheet links, the `@layer`-ordering `styles.css` and the favicon link are all rewritten to the hashed names; nothing in `dist/` refers to an unhashed path. The same input produces a byte-identical `dist/`.
+
+**Why hashing is the precondition for `immutable`.** `Cache-Control: immutable` tells a browser it may serve the file for a year without ever asking again. That is only safe when the URL cannot come to mean different bytes — which is exactly what a content hash guarantees, and exactly what an unhashed `/src/app.js` cannot. Shipping a long `max-age` on an unhashed asset strands users on a stale build; shipping a hashed asset without one pays for revalidation forever. The two go together or neither does.
+
+**Where the policy lives.** `vercel.json`, in one `headers` block per asset class: `immutable` for the hashed shapes, `max-age=0, must-revalidate` plus `Vercel-CDN-Cache-Control: max-age=31536000` for the document, and `X-Content-Type-Options`, `Referrer-Policy` and a `Content-Security-Policy` on everything. The CSP needs no `'unsafe-inline'`: there is no inline `<script>`, no `<style>` element and no inline `style=` attribute in the markup, and the JavaScript only ever calls `element.style.setProperty(...)` and assigns `element.style.transform`, which are CSSOM writes that CSP does not govern.
+
+**The waterfall.** A deep ES-module graph is discovered one network round trip at a time: the browser cannot ask for `src/features/trainer.js` until `src/app.js` has arrived and been parsed. The build emits a `<link rel="modulepreload">` for every module in the graph, in dependency order, so all of them are requested from the first byte of HTML. That block is generated on every build and must never be hand-maintained — a stale preload list is a wrong hash away from a 404.
