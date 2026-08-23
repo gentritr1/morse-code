@@ -64,6 +64,7 @@ export function getElements() {
     sheetScrim: required("#sheetScrim"),
     sessionScore: required("#sessionScore"),
     bestScore: required("#bestScore"),
+    lettersMemory: required("#lettersMemory"),
 
     introCard: required("#introCard"),
     introTag: required("#introTag"),
@@ -74,7 +75,18 @@ export function getElements() {
     introHear: required("#introHear"),
     introGotIt: required("#introGotIt"),
 
+    contactCard: required("#contactCard"),
+    contactSignal: required("#contactSignal"),
+    contactReplay: required("#contactReplay"),
+    contactContinue: required("#contactContinue"),
+
+    arrivalCard: required("#arrivalCard"),
+    arrivalPrimary: required("#arrivalPrimary"),
+    arrivalSecondary: required("#arrivalSecondary"),
+    arrivalStart: required("#arrivalStart"),
+
     sessionCard: required("#sessionCard"),
+    sessionTag: required("#sessionTag"),
     sessionSentence: required("#sessionSentence"),
     sessionContinue: required("#sessionContinue"),
     sessionRail: required("#sessionRail"),

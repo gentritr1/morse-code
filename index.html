@@ -94,8 +94,11 @@
             </div>
             <ol class="letters-list" id="lettersList"></ol>
             <div class="letters-foot">
-              <span>Score <strong id="sessionScore">0 / 0</strong></span>
-              <span id="bestScore" hidden>Best 0</span>
+              <div class="letters-scores">
+                <span>Score <strong id="sessionScore">0 / 0</strong></span>
+                <span id="bestScore" hidden>Best 0</span>
+              </div>
+              <small class="letters-memory" id="lettersMemory" hidden></small>
             </div>
           </aside>
 
@@ -114,8 +117,27 @@
               </div>
             </div>
 
+            <div class="intro-card contact-card" id="contactCard" hidden>
+              <span class="intro-tag">Incoming</span>
+              <div class="contact-signal" id="contactSignal" aria-hidden="true"></div>
+              <p class="contact-line">Two signals just arrived, and you cannot read them yet. That is the point.</p>
+              <div class="intro-actions">
+                <button class="secondary-action" type="button" id="contactReplay">Replay</button>
+                <button class="primary-action" type="button" id="contactContinue">Continue</button>
+              </div>
+            </div>
+
+            <div class="intro-card arrival-card" id="arrivalCard" hidden>
+              <span class="intro-tag">Welcome back</span>
+              <p class="arrival-line" id="arrivalPrimary"></p>
+              <p class="arrival-line arrival-secondary" id="arrivalSecondary" hidden></p>
+              <div class="intro-actions">
+                <button class="primary-action" type="button" id="arrivalStart">Start</button>
+              </div>
+            </div>
+
             <div class="intro-card session-card" id="sessionCard" hidden>
-              <span class="intro-tag">Session done</span>
+              <span class="intro-tag" id="sessionTag">Session done</span>
               <p class="session-sentence" id="sessionSentence"></p>
               <div class="intro-actions">
                 <button class="primary-action" type="button" id="sessionContinue">Keep going</button>

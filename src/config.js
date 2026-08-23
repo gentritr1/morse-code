@@ -18,23 +18,31 @@ export const STORAGE_KEYS = Object.freeze({
  */
 export const KOCH_ORDER = Object.freeze(["K", "M", "R", "S", "A", "T", "O", "I", "N", "E"]);
 
+/**
+ * Each machine keeps its own subtitle prefix; the suffix is the learner's own
+ * station callsign, so the plate reads as *their* set rather than as a serial
+ * number the product invented.
+ */
 export const THEMES = Object.freeze({
   terminal: {
     label: "Terminal",
     title: "MORSE TRAINER v1.4",
-    subtitle: "AMBER TERMINAL · SET 04",
+    prefix: "AMBER TERMINAL",
   },
   teletext: {
     label: "Teletext",
     title: "MORSE 404",
-    subtitle: "BROADCAST TELETEXT · PAGE 404",
+    prefix: "BROADCAST TELETEXT",
   },
   pocket: {
     label: "Pocket Trainer",
     title: "CW-83",
-    subtitle: "POCKET TRAINER · DESK UNIT",
+    prefix: "POCKET TRAINER",
   },
 });
+
+/** Callsign letters, minus the ones that read as digits in machine faces. */
+export const CALLSIGN_LETTERS = "ABCDEFGHJKLMNPRSTUVWXYZ";
 
 /**
  * Farnsworth speeds: characters are always sent fast enough that they arrive as
@@ -92,15 +100,16 @@ export const SESSION_PHASES = Object.freeze([
 ]);
 
 /**
- * The very first session. Its opening run — two intro cards and the four
- * guided K/M discriminations — *is* the Arrive phase, and Repair only needs
- * two rounds to contrast the pair it just taught, so the first sitting is the
- * same twenty rounds as any other rather than a longer initiation.
+ * The very first session. Its opening run — the incoming transmission, two
+ * intro cards, the four guided K/M discriminations and the same transmission
+ * handed back — *is* the Arrive phase, and Repair only needs two rounds to
+ * contrast the pair it just taught, so the first sitting is the same twenty
+ * rounds as any other rather than a longer initiation.
  */
 export const SEED_SESSION_PHASES = Object.freeze([
-  Object.freeze({ id: "arrive", label: "ARRIVE", through: 4 }),
-  Object.freeze({ id: "repair", label: "REPAIR", through: 6 }),
-  Object.freeze({ id: "new", label: "NEW", through: 7 }),
+  Object.freeze({ id: "arrive", label: "ARRIVE", through: 5 }),
+  Object.freeze({ id: "repair", label: "REPAIR", through: 7 }),
+  Object.freeze({ id: "new", label: "NEW", through: 8 }),
   Object.freeze({ id: "mix", label: "MIX", through: 16 }),
   Object.freeze({ id: "use", label: "USE", through: SESSION_ROUNDS }),
 ]);
@@ -160,3 +169,24 @@ export const SPACING_STEP = 2;
 export const SPACING_MISS_STREAK = 2;
 export const SPACING_CLEAN_STREAK = 5;
 export const MIN_EFFECTIVE_WPM = 6;
+
+/**
+ * Motivation is stated from evidence or not at all. Every threshold below is
+ * the point at which a claim becomes something the log can actually support:
+ * fewer samples than this and the sentence is simply omitted.
+ */
+/** Response times needed in a window before a pace can be quoted. */
+export const TREND_MIN_SAMPLES = 8;
+export const TREND_WINDOW_MS = 7 * DAY;
+/** Below this the two medians are the same pace with different noise. */
+export const TREND_MIN_DELTA_MS = 200;
+/** A character answered again this long after a previous clean answer held overnight. */
+export const NIGHT_GAP_HOURS = 18;
+/** How far ahead the come-back line is allowed to look. */
+export const RETURNING_WINDOW_MS = 36 * HOUR;
+/** A visit is "returning" once the last scored attempt is at least this old. */
+export const ARRIVAL_IDLE_MS = 20 * 60 * 1000;
+/** Stability that means a character has been held for a week. */
+export const SEVEN_DAY_STAB = 3;
+/** Milestones are earned once each, and only from recorded evidence. */
+export const MILESTONE_NAMES = Object.freeze(["sevenDay", "unaidedWord", "firstInstant", "allTen"]);

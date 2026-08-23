@@ -16,6 +16,7 @@ import {
   nextTarget,
   readProgress,
   unlockedLetters,
+  writeProgress,
 } from "./features/progress.js";
 import { createSendController } from "./features/send.js";
 import { createSettingsController } from "./features/settings.js";
@@ -59,6 +60,9 @@ function initialDifficulty() {
 const theme = initialTheme();
 const performanceProfile = readPerformanceProfile(storage);
 const progress = markSeededFromHistory(readProgress(storage), performanceProfile);
+// The station callsign is minted on the first read that finds none. Writing the
+// record back here is what makes it the same callsign on the next visit.
+writeProgress(storage, progress);
 const mode = initialMode(progress.unlocked);
 const difficulty = initialDifficulty();
 const pool = unlockedLetters(progress);
@@ -107,7 +111,17 @@ const state = {
   sessionAnswered: 0,
   sessionDone: false,
   sessionSentence: "",
+  sessionMilestone: null,
   sessionExtras: 0,
+  // The opening transmission and the returning-visit greeting. Both are cards
+  // in the stage slot rather than rounds: neither is ever scored.
+  contactOpen: false,
+  roundFirstRead: false,
+  arrivalOpen: false,
+  // Shown at most once per visit, and never persisted.
+  arrivalShown: false,
+  arrivalLines: [],
+  arrivalPair: null,
   seedIndex: 0,
   introSeeded: false,
   introRefresh: false,
@@ -213,5 +227,6 @@ document.addEventListener("visibilitychange", () => {
 });
 
 context.render();
-// The trainer picks the first exercise too — the learner never chooses one.
-if (state.mode === "learn") context.trainer.newRound(false);
+// The trainer picks the first exercise too — the learner never chooses one. A
+// returning learner is greeted with what is waiting before anything plays.
+if (state.mode === "learn") context.trainer.startVisit();

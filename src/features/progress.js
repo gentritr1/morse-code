@@ -1,19 +1,25 @@
 import {
+  CALLSIGN_LETTERS,
   CONF_LIVE,
   GROUP_UNLOCK_AT,
   KOCH_ORDER,
   LAPSE_HALFLIFE,
+  MILESTONE_NAMES,
   MIN_EFFECTIVE_WPM,
+  RETURNING_WINDOW_MS,
   SEED_SESSION_PHASES,
   SESSION_PHASES,
   SESSION_ROUNDS,
+  SEVEN_DAY_STAB,
+  SHORT_FOLLOWUP,
   SPACING_CLEAN_STREAK,
   SPACING_MISS_STREAK,
   SPACING_STEP,
   STORAGE_KEYS,
+  TREND_MIN_DELTA_MS,
 } from "../config.js";
 import { wordsFrom } from "../data/words.js";
-import { cleanAccuracy, retentionWindows } from "./events.js";
+import { cleanAccuracy, latencyTrend, retentionWindows, survivedNight } from "./events.js";
 import { normalisePlacement } from "./placement.js";
 import {
   confForLetter,
@@ -54,6 +60,18 @@ function clampOffset(value) {
   return Math.max(-40, offset);
 }
 
+/**
+ * A station identity, minted once and kept. Two letters and three digits is
+ * the only thing in the product the learner did not earn — it exists so the
+ * machine plate names *their* set rather than a serial number we invented.
+ */
+export function genCallsign(random = Math.random) {
+  const pick = () => CALLSIGN_LETTERS[Math.floor(random() * CALLSIGN_LETTERS.length)];
+  return `${pick()}${pick()}-${100 + Math.floor(random() * 900)}`;
+}
+
+const CALLSIGN_PATTERN = /^[A-Z]{2}-\d{3}$/;
+
 export function createProgress() {
   return {
     unlocked: STARTING_UNLOCKED,
@@ -64,7 +82,22 @@ export function createProgress() {
     // No measurement yet: the trainer starts on the preset the guide offers
     // until the learner runs the placement trial.
     placement: null,
+    callsign: genCallsign(),
+    // Earned once each, from evidence, and never re-announced.
+    milestones: {},
+    unaidedWords: 0,
   };
+}
+
+/** Milestones are timestamps under known names. Anything else is dropped. */
+function readMilestones(source) {
+  const out = {};
+  if (!source || typeof source !== "object" || Array.isArray(source)) return out;
+  for (const name of MILESTONE_NAMES) {
+    const ts = Math.floor(Number(source[name]));
+    if (Number.isFinite(ts) && ts > 0) out[name] = ts;
+  }
+  return out;
 }
 
 /**
@@ -73,13 +106,23 @@ export function createProgress() {
  * anything adaptive runs. A learner's very first minute should not be spent
  * proving something to a scheduler that has no data yet.
  */
+/** The two starting characters, sent as one transmission. */
+export const CONTACT_TEXT = `${KOCH_ORDER[0]}${KOCH_ORDER[1]}`;
+
 export const SEED_QUEUE = Object.freeze([
+  // The first thing a learner hears is a message they cannot read. The beat is
+  // true rather than decorative: the two characters inside it are taught next,
+  // and the same transmission is handed back a few rounds later.
+  Object.freeze({ type: "contact", text: CONTACT_TEXT }),
   Object.freeze({ type: "intro", letter: KOCH_ORDER[0] }),
   Object.freeze({ type: "intro", letter: KOCH_ORDER[1] }),
   Object.freeze({ type: "letter", text: KOCH_ORDER[0], phase: "arrive" }),
   Object.freeze({ type: "letter", text: KOCH_ORDER[1], phase: "arrive" }),
   Object.freeze({ type: "letter", text: KOCH_ORDER[1], phase: "arrive" }),
   Object.freeze({ type: "letter", text: KOCH_ORDER[0], phase: "arrive" }),
+  // The transmission again, now as a round. Nothing about it is special to the
+  // scheduler — it is an ordinary burst, which is exactly why reading it counts.
+  Object.freeze({ type: "burst", text: CONTACT_TEXT, phase: "arrive", firstRead: true }),
   // Repair on the seed session is the same two characters contrasted once
   // more: there is no history yet for a confusion pair to come out of.
   Object.freeze({ type: "letter", text: KOCH_ORDER[1], phase: "repair" }),
@@ -114,6 +157,11 @@ export function readProgress(storage) {
     sessions: Math.max(0, Math.floor(Number(stored.sessions)) || 0),
     seeded: Boolean(stored.seeded) || (Math.floor(Number(stored.sessions)) || 0) > 0,
     placement: normalisePlacement(stored.placement),
+    // A record written before the station had a name gets one now; it is
+    // persisted on the next write, so it survives the reload after this one.
+    callsign: CALLSIGN_PATTERN.test(stored.callsign) ? stored.callsign : genCallsign(),
+    milestones: readMilestones(stored.milestones),
+    unaidedWords: Math.max(0, Math.floor(Number(stored.unaidedWords)) || 0),
   };
 }
 
@@ -125,6 +173,9 @@ export function writeProgress(storage, progress) {
     sessions: Math.max(0, Math.floor(Number(progress.sessions)) || 0),
     seeded: Boolean(progress.seeded),
     placement: normalisePlacement(progress.placement),
+    callsign: CALLSIGN_PATTERN.test(progress.callsign) ? progress.callsign : genCallsign(),
+    milestones: readMilestones(progress.milestones),
+    unaidedWords: Math.max(0, Math.floor(Number(progress.unaidedWords)) || 0),
   });
 }
 
@@ -211,13 +262,18 @@ function padPick(list, count, pool) {
  * pause threshold with accuracy back up — hysteresis, so it cannot flicker
  * around one boundary. `progress.newPaused` is the one field this writes.
  */
+/** Characters whose review has come due. The brake and the arrival card share it. */
+export function dueNow(profile, progress, now = Date.now()) {
+  return unlockedLetters(progress).filter((letter) => {
+    const metrics = profile.letters[letter];
+    return Boolean(metrics) && metrics.phase === "rev" && metrics.dueAt <= now;
+  });
+}
+
 export function readyForNew(profile, progress, now = Date.now(), events = []) {
   if (isComplete(progress)) return false;
   const pool = unlockedLetters(progress);
-  const dueCount = pool.filter((letter) => {
-    const metrics = profile.letters[letter];
-    return metrics.phase === "rev" && metrics.dueAt <= now;
-  }).length;
+  const dueCount = dueNow(profile, progress, now).length;
   const active = pool.filter((letter) => profile.letters[letter].phase !== "rev").length;
   const acc = cleanAccuracy(events, 30);
   const pauseAt = Math.max(4, Math.ceil(0.3 * progress.unlocked));
@@ -409,8 +465,20 @@ export function pickRound({ profile, progress, events = [], history = {}, random
     if (item && item.type === "intro") {
       return { type: "intro", text: item.letter, letter: item.letter, phase: "arrive", seed: true, unlock: false, reason: null, contrast: null, retry: false };
     }
+    if (item && item.type === "contact") {
+      return { type: "contact", text: item.text, phase: "arrive", seed: true, reason: null, contrast: null, retry: false };
+    }
     if (item) {
-      return { type: "letter", text: item.text, phase: item.phase, seed: true, reason: null, contrast: null, retry: false };
+      return {
+        type: item.type ?? "letter",
+        text: item.text,
+        phase: item.phase,
+        seed: true,
+        firstRead: Boolean(item.firstRead),
+        reason: null,
+        contrast: null,
+        retry: false,
+      };
     }
   }
 
@@ -441,6 +509,11 @@ export function pickRound({ profile, progress, events = [], history = {}, random
     // The top of the lane order, one per round, padded so four rounds always
     // have four characters even in a two-character pool.
     const arrivals = padPick(order.slice(0, 4), 4, order);
+    // The arrival card is allowed to say "this round opens with them" only
+    // because it actually does: the pair it named takes the first round.
+    if (history.openWith && unlockedLetters(progress).includes(history.openWith)) {
+      arrivals[0] = history.openWith;
+    }
     const letter = arrivals[Math.max(0, baseRound - 1)] ?? order[0];
     return letterRound(profile, letter, phase, { now });
   }
@@ -548,6 +621,134 @@ export function updateSpacing(progress, streaks, clean, baseEffectiveWpm) {
   return { offset, streaks: next, direction };
 }
 
+/* ------------------------------------------- evidence-only motivation -- */
+
+/**
+ * Every line in this section is derived from something that was recorded, and
+ * is omitted when the record does not support it. Nothing is inferred, nothing
+ * is encouragement the learner did not earn, and none of it is ever a number on
+ * the stage. These helpers read the log and the profile; they never write.
+ */
+
+/** `K`, `K and M`, `K, M and R` — the only list format the product speaks. */
+function listOf(items) {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+function plural(count, one, many = `${one}s`) {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/** Characters scheduled to come back inside the next day and a half, soonest first. */
+export function returningSoon(profile, progress, now = Date.now(), limit = 3) {
+  return unlockedLetters(progress)
+    .map((letter) => ({ letter, dueAt: profile.letters[letter]?.dueAt ?? 0 }))
+    .filter((entry) => entry.dueAt > now && entry.dueAt < now + RETURNING_WINDOW_MS)
+    .sort((a, b) => a.dueAt - b.dueAt)
+    .slice(0, limit)
+    .map((entry) => entry.letter);
+}
+
+/**
+ * The scheduler's reasoning, in the learner's words. A learner who knows why a
+ * character came back has a mental model; one who only sees it return has a
+ * mystery. Soonest due first, and only where there is a reason to give.
+ */
+export function whyReturning(profile, progress, now = Date.now()) {
+  const reasons = unlockedLetters(progress)
+    .map((letter) => ({ letter, metrics: profile.letters[letter] }))
+    .filter((entry) => entry.metrics && entry.metrics.dueAt > 0)
+    .sort((a, b) => a.metrics.dueAt - b.metrics.dueAt)
+    .map(({ letter, metrics }) => {
+      if (metrics.phase === "rel") return `${letter} comes back because you missed it today.`;
+      if (metrics.phase === "acq") {
+        return `${letter} is still new — one unaided answer after a real gap and it enters review.`;
+      }
+      if (metrics.lastOk && metrics.dueAt - metrics.lastOk <= SHORT_FOLLOWUP * 1.5) {
+        return `${letter} was right but slow, so its interval did not grow.`;
+      }
+      return null;
+    })
+    .filter(Boolean);
+  return reasons;
+}
+
+/**
+ * Milestones. Each is earned at most once, from evidence already on record, and
+ * the timestamp is what makes that true across sessions.
+ */
+export function checkMilestones({ profile, progress, now = Date.now() } = {}) {
+  const milestones = { ...(progress?.milestones ?? {}) };
+  const pool = unlockedLetters(progress);
+  const candidates = [];
+
+  if (!milestones.sevenDay) {
+    const letter = pool.find((entry) => (profile.letters[entry]?.stab ?? 0) >= SEVEN_DAY_STAB);
+    if (letter) {
+      candidates.push({ key: "sevenDay", text: `${letter} reached a seven-day interval — the first signal you have held that long.` });
+    }
+  }
+  if (!milestones.unaidedWord && (Number(progress?.unaidedWords) || 0) > 0) {
+    candidates.push({ key: "unaidedWord", text: "You decoded a whole word unaided for the first time." });
+  }
+  if (!milestones.firstInstant) {
+    const letter = pool.find((entry) => isInstant(profile.letters[entry], letterBaseline(profile, entry)));
+    if (letter) {
+      candidates.push({ key: "firstInstant", text: `${letter} is instant — it arrives as a shape, not a puzzle.` });
+    }
+  }
+  if (!milestones.allTen && isComplete(progress)) {
+    candidates.push({ key: "allTen", text: "All ten letters are yours. From here it is about keeping them." });
+  }
+
+  // Only the milestone that is actually announced is spent. Several can
+  // become true in one session; the rest wait for a session of their own.
+  const earned = candidates.slice(0, 1).map((candidate) => candidate.text);
+  if (candidates[0]) milestones[candidates[0].key] = now;
+
+  return { milestones, earned };
+}
+
+/**
+ * What is waiting, on a returning visit. At most two lines, in a fixed order,
+ * each only when it is true — and one fallback that is itself a fact: there is
+ * nothing due, so this round is practice rather than review.
+ */
+export function arrivalLines(profile, progress, events = [], now = Date.now()) {
+  const lines = [];
+  const pair = topPair(profile, now, unlockedLetters(progress));
+
+  const due = dueNow(profile, progress, now).length;
+  if (due) lines.push(`${plural(due, "signal")} came due while you were away.`);
+
+  const held = survivedNight(events).filter((letter) => isUnlocked(progress, letter));
+  if (held.length) {
+    const named = held.slice(0, 5);
+    lines.push(`${listOf(named)} ${named.length === 1 ? "has" : "have"} survived a night.`);
+  }
+
+  if (pair) lines.push(`${pair[0]} and ${pair[1]} still blur together — this round opens with them.`);
+  if (!lines.length) lines.push("Nothing is due yet — this round is practice.");
+  return { lines: lines.slice(0, 2), pair };
+}
+
+/**
+ * One dated line for the drawer: the most recent thing that actually happened.
+ * No percentages, no list, and nothing at all until there is something to say.
+ */
+export function cabinMemory(profile, progress, events = []) {
+  const milestones = progress?.milestones ?? {};
+  const entries = [];
+  const firstClean = events.find((event) => event.ctx === "char" && event.correct && event.scored);
+  if (firstClean) entries.push({ ts: firstClean.ts, text: `first signal read unaided: ${firstClean.target}` });
+  if (milestones.unaidedWord) entries.push({ ts: milestones.unaidedWord, text: "first word read unaided" });
+  if (milestones.sevenDay) entries.push({ ts: milestones.sevenDay, text: "first seven-day interval" });
+  if (milestones.firstInstant) entries.push({ ts: milestones.firstInstant, text: "first instant signal" });
+  if (!entries.length) return null;
+  return entries.sort((a, b) => b.ts - a.ts)[0];
+}
+
 /* ------------------------------------------------------------- sentences -- */
 
 function instantClause(profile, progress) {
@@ -584,25 +785,51 @@ function retentionClause(events) {
   return null;
 }
 
+const seconds = (ms) => (Math.max(0, Number(ms) || 0) / 1000).toFixed(1);
+
+/**
+ * Recognition pace, quoted only when two full windows of clean responses exist
+ * and they actually differ. A tenth of a second either way is measurement noise,
+ * not progress, and saying so would be the first invented sentence in the app.
+ */
+function trendClause(events, now) {
+  const trend = latencyTrend(events, now);
+  if (!trend || trend.before === null) return null;
+  if (Math.abs(trend.before - trend.current) < TREND_MIN_DELTA_MS) return null;
+  return `About ${seconds(trend.current)} s per signal — a week ago it was ${seconds(trend.before)} s.`;
+}
+
 /**
  * The one calm passage at the end of a session, built from clauses that are
  * true and dropped when they are not. Never more than three sentences, never
- * a number that is not a count of signals.
+ * a number that is not a count of signals or a measured pace. Lower-priority
+ * clauses fall off the end rather than crowding the ones above them.
  */
 export function sessionSentence(profile, progress, options = {}) {
-  const { heldBack = [], lapsed = [], events = [], spacing = null } = options;
+  const {
+    heldBack = [], lapsed = [], events = [], spacing = null, milestone = null, now = Date.now(),
+  } = options;
   const sentences = [...instantClause(profile, progress)];
 
   if (heldBack.length) sentences.push(`${heldBack[0]} answered, but slowly — it comes back sooner.`);
   if (lapsed.length) sentences.push(`${lapsed[0]} slipped and was relearned.`);
+  if (milestone) sentences.push(milestone);
   if (progress.newPaused) {
     const settling = settlingLetter(profile, progress);
     if (settling) sentences.push(`New letters wait until ${settling} settles.`);
   }
   const retention = retentionClause(events);
   if (retention) sentences.push(retention);
+  const trend = trendClause(events, now);
+  if (trend) sentences.push(trend);
+  const soon = returningSoon(profile, progress, now);
+  if (soon.length) sentences.push(`Come back tomorrow for ${soon.join(", ")}.`);
   if (spacing === "wider") sentences.push("Gaps widened a little.");
   if (spacing === "tighter") sentences.push("Gaps tightened.");
+  // Why a character is coming back at all — the lowest-priority clause, so it
+  // only appears in a session that had little else to report.
+  const why = whyReturning(profile, progress, now)[0];
+  if (why) sentences.push(why);
 
   return sentences.slice(0, 3).join(" ");
 }

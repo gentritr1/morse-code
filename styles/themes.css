@@ -290,6 +290,13 @@ body[data-theme="pocket"] .intro-tag,
 body[data-theme="pocket"] .intro-letter,
 body[data-theme="pocket"] .intro-spoken,
 body[data-theme="pocket"] .intro-note,
+/*
+ * Pocket's accent *is* the LCD glass, so any card line that asks for the accent
+ * asks to be invisible here. Every line inside the bezel is inked instead.
+ */
+body[data-theme="pocket"] .session-sentence,
+body[data-theme="pocket"] .contact-line,
+body[data-theme="pocket"] .arrival-line,
 body[data-theme="pocket"] .status-line,
 body[data-theme="pocket"] .decode-line,
 body[data-theme="pocket"] .decode-line strong,
@@ -306,6 +313,16 @@ body[data-theme="pocket"] .send-mark:not(.placeholder):not([data-match="false"])
 body[data-theme="pocket"] .cursor,
 body[data-theme="pocket"] .time-track span {
   background: var(--lcd-ink);
+}
+
+/* The transmission on the contact card lives inside the same bezel. */
+body[data-theme="pocket"] .contact-signal span {
+  background: color-mix(in oklch, var(--lcd-ink) 40%, transparent);
+}
+
+body[data-theme="pocket"] .contact-signal span.is-playing {
+  background: var(--lcd-ink);
+  box-shadow: none;
 }
 
 body[data-theme="pocket"] .send-mark.placeholder {

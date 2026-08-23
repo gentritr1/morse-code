@@ -1,4 +1,5 @@
 import {
+  ARRIVAL_IDLE_MS,
   INSTANT_MS,
   KOCH_ORDER,
   RT_CAP,
@@ -26,6 +27,8 @@ import {
 } from "./performance-profile.js";
 import {
   SEED_QUEUE,
+  arrivalLines,
+  checkMilestones,
   effectiveWpmFor,
   isComplete,
   needsSeeding,
@@ -90,6 +93,11 @@ export function createTrainerController(context) {
 
   function currentText() {
     return state.introLetter ?? state.target;
+  }
+
+  /** True while one of the four moment cards has replaced the practice view. */
+  function cardOpen() {
+    return Boolean(state.introLetter || state.contactOpen || state.arrivalOpen || state.sessionDone);
   }
 
   function sprintUnlocked() {
@@ -179,8 +187,10 @@ export function createTrainerController(context) {
     const isSprint = state.mode === "sprint";
     const isSend = state.mode === "send";
     const showIntro = Boolean(state.introLetter);
-    const showSession = !showIntro && isLearn && state.sessionDone;
-    const showCard = showIntro || showSession;
+    const showContact = !showIntro && isLearn && state.contactOpen;
+    const showArrival = !showIntro && !showContact && isLearn && state.arrivalOpen;
+    const showSession = !showIntro && !showContact && !showArrival && isLearn && state.sessionDone;
+    const showCard = showIntro || showContact || showArrival || showSession;
     const accuracy = state.total ? `${Math.round((state.correct / state.total) * 100)}%` : "—";
     const remaining = Math.max(0, state.timeLeft);
 
@@ -190,7 +200,8 @@ export function createTrainerController(context) {
     // decides: the ear leads, and Sprint is a checkpoint on the same skill.
     elements.machine.dataset.reveal = !isSend && !state.revealMarks ? "hidden" : "shown";
     elements.machineTitle.textContent = THEMES[state.theme].title;
-    elements.machineSubtitle.textContent = THEMES[state.theme].subtitle;
+    // The plate names the learner's own station, not a serial number.
+    elements.machineSubtitle.textContent = `${THEMES[state.theme].prefix} · ${state.progress.callsign}`;
     document.body.dataset.theme = state.theme;
 
     for (const button of elements.modeButtons) {
@@ -214,12 +225,21 @@ export function createTrainerController(context) {
     elements.footerResult.textContent = `${state.correct} OK`;
 
     elements.introCard.hidden = !showIntro;
+    elements.contactCard.hidden = !showContact;
+    elements.arrivalCard.hidden = !showArrival;
     elements.sessionCard.hidden = !showSession;
     elements.practiceView.hidden = showCard || isSend;
     elements.sendView.hidden = showCard || !isSend;
     elements.answerDeck.hidden = showCard || isSend;
     elements.sprintPanel.hidden = !isSprint;
     renderIntro();
+    // The transmission the learner cannot read yet stays uniform: the marks
+    // light on the schedule, but nothing about their shape is on screen.
+    if (showContact) renderSignal(elements.contactSignal, state.target, false, false);
+    elements.arrivalPrimary.textContent = state.arrivalLines[0] ?? "";
+    elements.arrivalSecondary.textContent = state.arrivalLines[1] ?? "";
+    elements.arrivalSecondary.hidden = state.arrivalLines.length < 2;
+    elements.sessionTag.textContent = state.sessionMilestone ? "Milestone" : "Session done";
     elements.sessionSentence.textContent = state.sessionSentence;
 
     elements.statusLine.textContent = state.status;
@@ -382,7 +402,7 @@ export function createTrainerController(context) {
     state.signalHeard = false;
     context.render();
     cancelSignalAnimation = animateMarks(
-      [elements.signalText, elements.signalBars, elements.introSignal],
+      [elements.signalText, elements.signalBars, elements.introSignal, elements.contactSignal],
       schedule,
     );
     playbackTimer = window.setTimeout(() => {
@@ -418,13 +438,15 @@ export function createTrainerController(context) {
    * say when a round did not count, or the honesty of the schedule is invisible
    * and a page they walked away from looks like a character they forgot.
    */
-  function answerStatus({ target, hit, group, interrupted, assisted, heldBack }) {
+  function answerStatus({ target, hit, group, interrupted, assisted, heldBack, firstRead }) {
     if (interrupted) {
       return hit
         ? `${target} · not counted — you left the page`
         : "Not counted — you left the page";
     }
     if (!hit) return `Not quite · it was ${target}`;
+    // The opening transmission, read back. It is true exactly once.
+    if (firstRead && !assisted) return "You read it. Two minutes ago that was noise.";
     if (heldBack) return `Correct · ${target} · slowly — it returns sooner`;
     if (assisted) {
       return group
@@ -478,7 +500,15 @@ export function createTrainerController(context) {
     if (state.onboardingOpen || state.lettersOpen) return false;
     if (elements.settingsPanel.matches(":popover-open")) return false;
     state.roundPaused = false;
-    if (state.introLetter || state.sessionDone) {
+    // A card is not a round: it owes the learner nothing on return except the
+    // demonstration the contact card exists to give.
+    if (state.contactOpen) {
+      state.locked = true;
+      context.render();
+      playCurrentSignal();
+      return true;
+    }
+    if (state.introLetter || state.arrivalOpen || state.sessionDone) {
       state.locked = true;
       context.render();
       return true;
@@ -630,6 +660,12 @@ export function createTrainerController(context) {
 
     if (group && hit && !assisted && !interrupted) {
       recordWordTime(state.performanceProfile, responseMs);
+      // A whole word, read with no replay, no hint and no interruption. The
+      // counter is the evidence the milestone is later stated from.
+      if (state.roundType === "word") {
+        state.progress.unaidedWords = (Number(state.progress.unaidedWords) || 0) + 1;
+        writeProgress(storage, state.progress);
+      }
     }
     context.persistProfile();
     if (group && state.mode === "learn") {
@@ -647,7 +683,9 @@ export function createTrainerController(context) {
     state.locked = true;
     state.revealMarks = true;
     state.feedback = interrupted ? "neutral" : hit ? "correct" : "incorrect";
-    state.status = answerStatus({ target, hit, group, interrupted, assisted, heldBack });
+    state.status = answerStatus({
+      target, hit, group, interrupted, assisted, heldBack, firstRead: state.roundFirstRead,
+    });
     if (!interrupted) {
       state.streak = hit ? state.streak + 1 : 0;
       state.correct += hit ? 1 : 0;
@@ -673,7 +711,7 @@ export function createTrainerController(context) {
   }
 
   function answer(letter) {
-    if (state.locked || state.introLetter || state.sessionDone) return;
+    if (state.locked || cardOpen()) return;
     // An answer given before the last tone is not a fast answer, it is a guess
     // against a signal that has not finished arriving. It is dropped in
     // silence: no status, no scoring, nothing for the learner to undo.
@@ -698,7 +736,7 @@ export function createTrainerController(context) {
   }
 
   function backspace() {
-    if (state.locked || state.introLetter || state.sessionDone || !state.typed) return;
+    if (state.locked || cardOpen() || !state.typed) return;
     state.typed = state.typed.slice(0, -1);
     context.render();
   }
@@ -749,6 +787,84 @@ export function createTrainerController(context) {
     context.render();
   }
 
+  /**
+   * The first thing a learner ever hears is a message they cannot read. The
+   * card is a demonstration, not a round: nothing is scored, nothing is
+   * scheduled, and the same transmission comes back as an ordinary burst once
+   * both characters have been taught.
+   */
+  function openContact(text, { play = true } = {}) {
+    clearPendingRound();
+    state.contactOpen = true;
+    state.target = text;
+    state.roundType = "contact";
+    state.locked = true;
+    state.typed = "";
+    state.feedback = "neutral";
+    state.revealMarks = false;
+    state.roundPaused = false;
+    state.pausedHeard = false;
+    state.signalHeard = false;
+    context.render();
+    if (play) playCurrentSignal();
+    elements.contactContinue.focus({ preventScroll: true });
+    announce("Incoming transmission. Two signals just arrived, and you cannot read them yet.");
+  }
+
+  function dismissContact() {
+    if (!state.contactOpen) return;
+    state.contactOpen = false;
+    newRound(true);
+  }
+
+  /**
+   * A returning visit says what is waiting, from the record, and nothing else.
+   * Every line is omitted unless the log supports it, and the fallback is
+   * itself a fact rather than encouragement.
+   */
+  function shouldGreet() {
+    if (state.mode !== "learn") return false;
+    if (state.arrivalShown) return false;
+    if ((Number(state.progress.sessions) || 0) < 1) return false;
+    if (state.sessionAnswered > 0 || state.sessionDone || state.introLetter) return false;
+    // No attempt on record at all is not "mid-session" either: a learner with
+    // sessions behind them and an empty log is exactly who this is for.
+    const last = [...state.events].reverse().find((event) => event.scored);
+    return !last || Date.now() - last.ts >= ARRIVAL_IDLE_MS;
+  }
+
+  function openArrival() {
+    const now = Date.now();
+    const { lines, pair } = arrivalLines(state.performanceProfile, state.progress, state.events, now);
+    state.arrivalShown = true;
+    state.arrivalLines = lines;
+    // The pair line promises the round opens with them, so it does.
+    state.arrivalPair = lines.some((line) => line.includes("blur together")) ? pair : null;
+    state.arrivalOpen = true;
+    state.locked = true;
+    state.typed = "";
+    state.feedback = "neutral";
+    state.revealMarks = false;
+    context.render();
+    elements.arrivalStart.focus({ preventScroll: true });
+    announce(`Welcome back. ${lines.join(" ")}`);
+  }
+
+  function dismissArrival() {
+    if (!state.arrivalOpen) return;
+    state.arrivalOpen = false;
+    newRound(true);
+  }
+
+  /** The first thing a visit does: greet a returning learner, or start a round. */
+  function startVisit() {
+    if (shouldGreet()) {
+      openArrival();
+      return;
+    }
+    newRound(false);
+  }
+
   function openSessionEnd() {
     clearPendingRound();
     state.sessionDone = true;
@@ -758,20 +874,36 @@ export function createTrainerController(context) {
     state.status = "Session done";
     state.progress.sessions = (Number(state.progress.sessions) || 0) + 1;
     state.progress.seeded = true;
+    // Milestones are settled here, once per session, and written with the rest
+    // of the record — they are the only thing in the passage that persists.
+    const now = Date.now();
+    const { milestones, earned } = checkMilestones({
+      profile: state.performanceProfile,
+      progress: state.progress,
+      now,
+    });
+    state.progress.milestones = milestones;
+    state.sessionMilestone = earned[0] ?? null;
     writeProgress(storage, state.progress);
     state.sessionSentence = sessionSentence(state.performanceProfile, state.progress, {
       heldBack: state.heldBackThisSession,
       lapsed: state.relearnedThisSession,
       events: state.events,
       spacing: state.spacingDirection,
+      milestone: state.sessionMilestone,
+      now,
     });
     context.render();
+    // A milestone is rare, so the scoreboard is allowed to notice it.
+    if (state.sessionMilestone) playOnce(elements.streakStat, "pop");
     elements.sessionContinue.focus({ preventScroll: true });
-    announce(`Session done. ${state.sessionSentence}`);
+    announce(`${state.sessionMilestone ? "Milestone" : "Session done"}. ${state.sessionSentence}`);
   }
 
   function startSession() {
     state.sessionDone = false;
+    state.sessionMilestone = null;
+    state.arrivalPair = null;
     state.sessionAnswered = 0;
     state.sessionExtras = 0;
     // Which phase table this sitting runs on is decided once, at its start:
@@ -796,6 +928,9 @@ export function createTrainerController(context) {
     state.roundType = round.type;
     state.target = round.text;
     state.roundReason = round.reason ?? null;
+    // The one transmission whose successful decode has its own sentence: the
+    // learner heard it as noise a few rounds earlier.
+    state.roundFirstRead = Boolean(round.firstRead);
     if (round.skipped && !state.skippedPhases.includes(round.skipped)) {
       state.skippedPhases.push(round.skipped);
     }
@@ -871,6 +1006,7 @@ export function createTrainerController(context) {
         wasReady: state.wasReadyForNew,
         seedIndex: state.seedIndex,
         seeded: state.seedRun,
+        openWith: state.arrivalPair?.[0] ?? null,
         now,
       },
     });
@@ -884,6 +1020,11 @@ export function createTrainerController(context) {
         state.progress.seeded = true;
         writeProgress(storage, state.progress);
       }
+    }
+
+    if (round.type === "contact") {
+      openContact(round.text, { play: playAfterRender });
+      return;
     }
 
     if (round.type === "intro") {
@@ -1036,6 +1177,12 @@ export function createTrainerController(context) {
     state.sessionAnswered = 0;
     state.sessionExtras = 0;
     state.sessionDone = false;
+    state.sessionMilestone = null;
+    state.contactOpen = false;
+    state.roundFirstRead = false;
+    state.arrivalOpen = false;
+    state.arrivalLines = [];
+    state.arrivalPair = null;
     state.seedIndex = 0;
     state.introSeeded = false;
     state.seenRound = {};
@@ -1079,6 +1226,16 @@ export function createTrainerController(context) {
       return;
     }
     if (event.key === "Enter") {
+      if (state.contactOpen) {
+        event.preventDefault();
+        dismissContact();
+        return;
+      }
+      if (state.arrivalOpen) {
+        event.preventDefault();
+        dismissArrival();
+        return;
+      }
       if (state.introLetter) {
         event.preventDefault();
         dismissIntro();
@@ -1097,7 +1254,7 @@ export function createTrainerController(context) {
     }
 
     const letter = event.key.toUpperCase();
-    if (state.mode !== "send" && !state.introLetter && !state.sessionDone && /^[A-Z]$/.test(letter)) {
+    if (state.mode !== "send" && !cardOpen() && /^[A-Z]$/.test(letter)) {
       event.preventDefault();
       answer(letter);
     }
@@ -1109,7 +1266,7 @@ export function createTrainerController(context) {
    * can never be a first listen and can never qualify for a longer interval.
    */
   function markInterrupted() {
-    if (state.mode === "send" || state.locked || state.introLetter || state.sessionDone) return;
+    if (state.mode === "send" || state.locked || cardOpen()) return;
     state.roundInterrupted = true;
   }
 
@@ -1131,6 +1288,11 @@ export function createTrainerController(context) {
       if (!isSounding()) playCurrentSignal();
     });
     elements.introGotIt.addEventListener("click", dismissIntro);
+    elements.contactReplay.addEventListener("click", () => {
+      if (!isSounding()) playCurrentSignal();
+    });
+    elements.contactContinue.addEventListener("click", dismissContact);
+    elements.arrivalStart.addEventListener("click", dismissArrival);
     elements.sessionContinue.addEventListener("click", startSession);
     document.addEventListener("keydown", handleKeydown);
   }
@@ -1152,6 +1314,7 @@ export function createTrainerController(context) {
     setMode,
     setTheme,
     sprintUnlocked,
+    startVisit,
     stopSprint,
     syncUrl,
     updateSprint,

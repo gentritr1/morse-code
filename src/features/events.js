@@ -1,4 +1,11 @@
-import { EVENT_CAP, STORAGE_KEYS } from "../config.js";
+import {
+  EVENT_CAP,
+  NIGHT_GAP_HOURS,
+  STORAGE_KEYS,
+  TREND_MIN_SAMPLES,
+  TREND_WINDOW_MS,
+} from "../config.js";
+import { median } from "./performance-profile.js";
 
 /**
  * The attempt log: one append-only record per answered target, capped at
@@ -120,6 +127,47 @@ export function retention(events, minH, maxH, ctx = "char") {
 /** Overnight and week-long retention, the only two windows the product reads. */
 export function retentionWindows(events) {
   return { r24: retention(events, 20, 28), r7: retention(events, 6 * 24, 8 * 24) };
+}
+
+/**
+ * Whether recognition is getting faster, measured rather than asserted. The
+ * current pace is the median clean response of the last seven days and the
+ * comparison is the seven days before that; either window with fewer than
+ * `TREND_MIN_SAMPLES` samples is not a pace, so it comes back null and the
+ * sentence that would have quoted it is simply not written.
+ */
+export function latencyTrend(events, now = Date.now()) {
+  const scored = cleanEvents(events).filter((event) => event.correct);
+  const recent = scored
+    .filter((event) => now - event.ts <= TREND_WINDOW_MS)
+    .map((event) => event.rt);
+  if (recent.length < TREND_MIN_SAMPLES) return null;
+
+  const prior = scored
+    .filter((event) => now - event.ts > TREND_WINDOW_MS && now - event.ts <= 2 * TREND_WINDOW_MS)
+    .map((event) => event.rt);
+  return {
+    current: median(recent),
+    before: prior.length >= TREND_MIN_SAMPLES ? median(prior) : null,
+  };
+}
+
+/**
+ * Which characters have come back after a night. The claim is about a gap, so
+ * it is counted the same way retention is: only scored attempts, and only the
+ * span between one correct answer and the next correct answer on the same
+ * target. Answering something twice in one sitting can never produce it.
+ */
+export function survivedNight(events) {
+  const anchors = new Map();
+  const held = new Set();
+  for (const event of cleanEvents(events)) {
+    const anchor = anchors.get(event.target);
+    if (!event.correct) continue;
+    if (anchor && (event.ts - anchor) / HOUR >= NIGHT_GAP_HOURS) held.add(event.target);
+    anchors.set(event.target, event.ts);
+  }
+  return [...held];
 }
 
 /** Clean accuracy over the last `n` attempts, or null while the sample is thin. */

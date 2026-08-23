@@ -7,7 +7,7 @@ import {
   retentionOf,
   retentionState,
 } from "../features/performance-profile.js";
-import { nextLetterLine } from "../features/progress.js";
+import { cabinMemory, nextLetterLine } from "../features/progress.js";
 
 /**
  * The letters drawer is one list with two presentations: a column beside the
@@ -16,6 +16,19 @@ import { nextLetterLine } from "../features/progress.js";
  */
 export function createLettersController(context) {
   const { state, elements, announce } = context;
+
+  /**
+   * `22 Aug` — the only date the product ever prints. The month name is the
+   * reader's, the order is ours: a log line reads day-first everywhere.
+   */
+  function formatDay(ts) {
+    try {
+      const date = new Date(ts);
+      return `${date.getDate()} ${date.toLocaleDateString(undefined, { month: "short" })}`;
+    } catch {
+      return "";
+    }
+  }
 
   function dimmedPattern(letter) {
     return Array.from(MORSE[letter], () => "·").join(" ");
@@ -81,6 +94,12 @@ export function createLettersController(context) {
       Date.now(),
       Boolean(state.introLetter),
     );
+
+    // One dated line, and only when something has actually happened. It is the
+    // cabin's memory, not a log: the most recent fact, never a list.
+    const memory = cabinMemory(state.performanceProfile, state.progress, state.events);
+    elements.lettersMemory.hidden = !memory;
+    elements.lettersMemory.textContent = memory ? `${formatDay(memory.ts)} · ${memory.text}` : "";
 
     elements.sessionScore.textContent = `${state.correct} / ${state.total}`;
     elements.bestScore.textContent = `Best ${state.sprintBest}`;
