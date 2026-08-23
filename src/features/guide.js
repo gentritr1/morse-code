@@ -451,9 +451,17 @@ export function createGuideController(context) {
       button.addEventListener("click", () => setStep(state.onboardingStep - 1));
     }
     for (const button of elements.guideSkip) button.addEventListener("click", dismiss);
+    // Picking a machine applies it at once — the dialog itself retints with the
+    // rest of the product, so the choice is made by looking at it rather than
+    // by imagining it. It is a theme and nothing else: `setTheme` writes the
+    // theme key and never touches progress, so Back and Skip simply leave the
+    // last machine running.
     for (const button of elements.guideThemes) {
       button.addEventListener("click", () => {
-        state.onboardingTheme = button.dataset.guideTheme;
+        const choice = button.dataset.guideTheme;
+        if (!Object.hasOwn(THEMES, choice)) return;
+        context.trainer.setTheme(choice);
+        state.onboardingTheme = choice;
         render();
       });
     }

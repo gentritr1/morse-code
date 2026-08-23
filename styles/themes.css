@@ -54,6 +54,56 @@ body[data-theme="pocket"],
   --lcd-ink: oklch(0.30 0.04 150);
 }
 
+/*
+ * ═══ The active machine's accent ══════════════════════════════════════════
+ *
+ * One accent for the whole product: the shell, the guide dialog, the settings
+ * panel and the machine all draw their accented pixels from the machine that
+ * is switched on. There is no separate shell colour any more.
+ *
+ * These four are declared on <body> and deliberately NOT inside the blocks
+ * above, even though they are derived from the same `--theme-accent`. The
+ * palettes above are also applied locally through `[data-theme-tokens]`, which
+ * is what lets three machines be previewed side by side; a preview tile
+ * therefore carries a *different* machine's `--theme-accent`. Declared here,
+ * `var(--theme-accent)` is resolved once — at <body>, against the active
+ * machine — and the resulting colour inherits into the tiles as a plain value
+ * that their local palette cannot shadow. That is what keeps a Teletext tile
+ * yellow inside while its selected ring follows whatever machine is running.
+ *
+ * Mixing space is deliberate in every mix below. Accent into a NEUTRAL is
+ * mixed in `oklab`: `oklch` interpolates around the hue wheel and can land on
+ * a hue that belongs to neither end — pass 12 measured 22 % amber (hue 72)
+ * into the shell surface (hue 250) coming out at hue 211, a teal. `oklab`
+ * crosses the neutral axis instead. Mixes with `transparent` or with `white`
+ * keep whichever space reads clearest, since neither end carries a competing
+ * hue: alpha or lightness is all that moves.
+ */
+:root,
+body[data-theme="terminal"] {
+  --app-accent: var(--theme-accent);
+  --accent-chip: var(--theme-accent);
+  --accent-chip-ink: var(--theme-on-accent);
+  --accent-muted: color-mix(in oklab, var(--theme-accent) 42%, var(--shell-surface));
+  --focus: color-mix(in oklab, var(--theme-accent) 72%, white);
+}
+
+body[data-theme="teletext"] {
+  --app-accent: var(--theme-accent);
+  --accent-chip: var(--theme-accent);
+  --accent-chip-ink: var(--theme-on-accent);
+  --accent-muted: color-mix(in oklab, var(--theme-accent) 42%, var(--shell-surface));
+  --focus: color-mix(in oklab, var(--theme-accent) 72%, white);
+}
+
+body[data-theme="pocket"] {
+  --app-accent: var(--theme-accent);
+  --accent-chip: var(--theme-accent);
+  --accent-chip-ink: var(--theme-on-accent);
+  --accent-muted: color-mix(in oklab, var(--theme-accent) 42%, var(--shell-surface));
+  --focus: color-mix(in oklab, var(--theme-accent) 72%, white);
+}
+
 /* Amber terminal */
 body[data-theme="terminal"] .machine-header {
   border-bottom-style: dashed;
@@ -218,6 +268,14 @@ body[data-theme="teletext"] .machine-footer {
   border: 0;
   background: var(--tt-cyan);
   color: oklch(0.18 0.05 200);
+  /*
+   * The pocket trap again, one theme over: this bar is a light cyan slab, and
+   * the Letters button sits on it at ≤ 900 px. A pale accent-derived ring on
+   * cyan measured 1.15:1 (the old fixed teal ring measured 1.04:1 — the ring
+   * has never been visible here). On this surface the ring is the bar's own
+   * ink, the same colour its text already uses: 12.24:1.
+   */
+  --focus: oklch(0.18 0.05 200);
 }
 
 body[data-theme="teletext"] #footerMode {
@@ -305,6 +363,19 @@ body[data-theme="pocket"] .send-target,
 body[data-theme="pocket"] .send-target strong,
 body[data-theme="pocket"] .replay-copy {
   color: var(--lcd-ink);
+}
+
+/*
+ * Same trap, one layer up: the focus ring is derived from the accent, and on
+ * pocket the accent IS the LCD glass — an accent ring drawn on the glass is a
+ * pale green line on a pale green field. Inside the bezel the ring is inked
+ * instead. Declared on the three LCD surfaces so every control they contain
+ * inherits it; geometry (3 px, offset 3 px) is untouched.
+ */
+body[data-theme="pocket"] .intro-card,
+body[data-theme="pocket"] .practice-view,
+body[data-theme="pocket"] .send-view {
+  --focus: var(--lcd-ink);
 }
 
 /* The accent is the LCD glass itself, so the NEW BEST tag needs ink to exist. */

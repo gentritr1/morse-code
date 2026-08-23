@@ -37,7 +37,7 @@ This page is a focused product surface, not a marketing landing page. These rule
 
 ## Visual direction
 
-- Global shell: quiet neutral near-black with a restrained teal focus/selection color derived from the project seed `oklch(0.72 0.10 188)`.
+- Global shell: quiet neutral near-black, and **no accent of its own**. Every accented pixel in the product — app bar glyph and active mode, guide dots and primary button, settings chips and quiet links, skip link, focus ring — derives from the running machine's `--theme-accent`, so switching machine retints the whole shell on the 220 ms theme crossfade. Accent-into-neutral mixes are taken in `oklab` (in `oklch` the hue wheel is walked and lands on a third colour). The focus ring is `color-mix(in oklab, var(--theme-accent) 72%, white)`, except on surfaces where the accent *is* the surface — the pocket LCD and the teletext footer bar — where it is that surface's own ink.
 - Terminal: amber phosphor on brown-black, monospaced type, square controls, sparse glow only on the active signal.
 - Teletext: deep broadcast blue, VT323 pixel type, cyan/yellow/magenta/green system bars, block-shaped Morse marks.
 - Pocket Trainer: graphite plastic, grey-green recessed LCD, rubber keys, silkscreen labels, restrained red play control.

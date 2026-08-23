@@ -7,9 +7,14 @@
   --shell-border: oklch(0.32 0.008 250);
   --shell-text: oklch(0.95 0.004 250);
   --shell-muted: oklch(0.70 0.008 250);
-  --shell-accent: oklch(0.72 0.10 188);
-  --shell-accent-deep: oklch(0.40 0.07 188);
-  --focus: oklch(0.86 0.13 188);
+  /*
+   * There is no shell accent token any more. The product has exactly one
+   * accent — the running machine's — and it is derived in themes.css as
+   * `--app-accent` / `--accent-chip` / `--accent-chip-ink` / `--accent-muted`,
+   * together with `--focus`. They are declared on <body> rather than here
+   * because they resolve `var(--theme-accent)`, which only <body> carries for
+   * the active machine.
+   */
   --danger: oklch(0.70 0.18 25);
   --success: oklch(0.78 0.15 145);
   --space-1: 0.25rem;
@@ -139,11 +144,13 @@ button:disabled {
   left: var(--space-3);
   z-index: var(--layer-sticky);
   padding: var(--space-3) var(--space-4);
-  background: var(--shell-accent);
-  color: oklch(0.13 0.025 188);
+  background: var(--accent-chip);
+  color: var(--accent-chip-ink);
   font-weight: 700;
   text-decoration: none;
   transform: translateY(-200%);
+  /* Colour only: the reveal itself stays instant, as a skip link must. */
+  transition: var(--theme-crossfade);
 }
 
 .skip-link:focus {
@@ -209,8 +216,9 @@ button:disabled {
  * One row, always: identity, mode, settings. It never wraps, every pressable
  * box in it is 44 px tall on one centre line, and its accent is the machine's
  * `--theme-accent` — the bar is the top edge of the instrument, not a second
- * product sitting above it. Nothing in this block reaches for the shell's own
- * teal accent tokens — that colour stops at the bar's bottom rule.
+ * product sitting above it. Pass 13 finished the job the other way round: the
+ * shell has no accent of its own left anywhere, so there is nothing for this
+ * block to avoid reaching for.
  */
 .app-bar {
   width: min(100%, 96rem);
@@ -450,10 +458,21 @@ button:disabled {
   transform: scale(0.985);
 }
 
+/*
+ * The tile keeps rendering its OWN machine inside `.preview-screen` — a
+ * Teletext tile looks like Teletext whatever is running. Only the ring around
+ * it belongs to the product, so it reads `--app-accent`, which was resolved on
+ * <body> and cannot be shadowed by the tile's local `[data-theme-tokens]`.
+ */
 .theme-preview[aria-pressed="true"] {
-  border-color: var(--shell-accent);
+  border-color: var(--app-accent);
   background: var(--shell-surface);
   color: var(--shell-text);
+  transition:
+    color var(--motion-ui) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out),
+    border-color var(--motion-crossfade) var(--ease-out),
+    transform var(--motion-press) var(--ease-out);
 }
 
 .theme-preview strong {
@@ -498,16 +517,26 @@ button:disabled {
 }
 
 /*
- * Below the bar the shell keeps its own quiet teal: the panel is chrome, not
- * the instrument, and it previews all three machines at once — so it cannot
- * wear any one of their accents.
+ * The green the owner was pointing at. The panel previews all three machines
+ * at once, but it is not neutral ground: it is chrome of the machine that is
+ * running, so its one filled control wears that machine's chip pair and
+ * crossfades with the bar when the machine changes.
  */
 .settings-panel .segmented-control button[aria-pressed="true"] {
-  background: var(--shell-accent-deep);
-  color: oklch(0.97 0.01 188);
+  background: var(--accent-chip);
+  color: var(--accent-chip-ink);
+  transition:
+    color var(--motion-crossfade) var(--ease-out),
+    background-color var(--motion-crossfade) var(--ease-out),
+    transform var(--motion-press) var(--ease-out);
 }
 
-.settings-panel .segmented-control button:active {
+/*
+ * The press flash is for the option you are reaching for, not the one already
+ * chosen: the selected chip is now a filled accent slab, so darkening it on
+ * press would read as the accent switching off. It keeps the shared scale(0.97).
+ */
+.settings-panel .segmented-control button:not([aria-pressed="true"]):active {
   background: oklch(0.25 0.012 250);
 }
 
@@ -551,17 +580,18 @@ button:disabled {
   border-top: 1px solid var(--shell-border);
 }
 
+/* Measure · Show guide · Reset progress. Quiet, but the machine's colour. */
 .text-button {
   min-height: 3rem;
   padding: var(--space-2) var(--space-2);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--shell-muted);
+  color: var(--app-accent);
   font-size: 0.8125rem;
   font-weight: 600;
   transition:
-    color var(--motion-ui) var(--ease-out),
+    color var(--motion-crossfade) var(--ease-out),
     background-color var(--motion-ui) var(--ease-out);
 }
 
@@ -608,9 +638,10 @@ button:disabled {
     color: var(--shell-text);
   }
 
+  /* Background only: recolouring to `--shell-text` on hover would take the
+     machine's colour back off the control the moment it is pointed at. */
   .text-button:hover {
     background: var(--shell-surface);
-    color: var(--shell-text);
   }
 }
 }

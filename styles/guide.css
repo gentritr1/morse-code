@@ -79,22 +79,24 @@
   gap: var(--space-2);
 }
 
+/* The dot advances on its own 200 ms; its colour rides the theme crossfade so
+   the header does not change machine ahead of the button under it. */
 .guide-dots span {
   width: 6px;
   height: 6px;
   display: block;
   border-radius: 999px;
   background: var(--shell-border);
-  transition: width var(--motion-enter) var(--ease-out), background-color var(--motion-enter) var(--ease-out);
+  transition: width var(--motion-enter) var(--ease-out), background-color var(--motion-crossfade) var(--ease-out);
 }
 
 .guide-dots span[data-state="complete"] {
-  background: var(--shell-accent-deep);
+  background: var(--accent-muted);
 }
 
 .guide-dots span[data-state="active"] {
   width: 18px;
-  background: var(--shell-accent);
+  background: var(--app-accent);
 }
 
 .guide-skip {
@@ -180,10 +182,17 @@
   color: var(--shell-muted);
 }
 
+/* Next · Start · Measure my rhythm: the one filled control in the dialog, and
+   the same chip pair the settings panel's selected segment uses. */
 .guide-next {
-  border: 1px solid var(--shell-accent);
-  background: var(--shell-accent);
-  color: oklch(0.13 0.025 188);
+  border: 1px solid var(--accent-chip);
+  background: var(--accent-chip);
+  color: var(--accent-chip-ink);
+  transition:
+    color var(--motion-crossfade) var(--ease-out),
+    background-color var(--motion-crossfade) var(--ease-out),
+    border-color var(--motion-crossfade) var(--ease-out),
+    transform var(--motion-press) var(--ease-out);
 }
 
 .guide-quiet:active,
@@ -222,7 +231,13 @@
   width: 1.25rem;
   height: 1.25rem;
   display: block;
-  background: var(--theme-accent);
+  /*
+   * No transition here: trainer.css owns this mark's timing (it is the same
+   * rule the machine's playing marks use, 60 ms attack / 160 ms release) and
+   * that layer wins. Declaring a 220 ms crossfade in this layer would be a
+   * comment that never runs. The mark still fades with the rest, at 160 ms.
+   */
+  background: var(--app-accent);
 }
 
 .first-signal-pattern i.dash {
@@ -264,8 +279,11 @@
 }
 
 .rhythm-card:has([aria-pressed="true"]) {
-  border-color: var(--shell-accent);
+  border-color: var(--app-accent);
   background: var(--shell-surface-raised);
+  transition:
+    border-color var(--motion-crossfade) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out);
 }
 
 .rhythm-select {
@@ -297,7 +315,8 @@
 }
 
 .rhythm-card:has([aria-pressed="true"]) .rhythm-select small {
-  color: var(--shell-accent);
+  color: var(--app-accent);
+  transition: color var(--motion-crossfade) var(--ease-out);
 }
 
 .rhythm-hear {
@@ -379,8 +398,9 @@
 }
 
 .measure-group[data-state="sounding"] span {
-  background: var(--shell-accent);
-  box-shadow: 0 0 0.75rem color-mix(in oklch, var(--shell-accent) 55%, transparent);
+  background: var(--app-accent);
+  /* oklch is safe here: the other end is `transparent`, so only alpha moves. */
+  box-shadow: 0 0 0.75rem color-mix(in oklch, var(--app-accent) 55%, transparent);
   opacity: 1;
   transform: scale(1.06);
   transition:
@@ -450,8 +470,10 @@
   display: block;
   transform: scaleX(0);
   transform-origin: left center;
-  background: var(--shell-accent);
-  transition: transform var(--motion-enter) var(--ease-out);
+  background: var(--app-accent);
+  transition:
+    transform var(--motion-enter) var(--ease-out),
+    background-color var(--motion-crossfade) var(--ease-out);
 }
 
 .guide-themes {
@@ -548,17 +570,20 @@
     color: var(--shell-text);
   }
 
+  /* Lifted towards white in oklab — white carries no hue to walk to, and the
+     ink on the chip only gains contrast as the chip gets lighter. */
   .guide-next:hover {
-    background: oklch(0.79 0.11 188);
+    background: color-mix(in oklab, var(--accent-chip) 82%, white);
+    border-color: color-mix(in oklab, var(--accent-chip) 82%, white);
   }
 
   .first-signal:hover {
-    border-color: var(--shell-accent-deep);
+    border-color: var(--accent-muted);
     background: var(--shell-surface-raised);
   }
 
   .rhythm-card:hover {
-    border-color: var(--shell-accent-deep);
+    border-color: var(--accent-muted);
   }
 
   .rhythm-hear:hover {
@@ -567,7 +592,7 @@
   }
 
   .measure-answer:hover {
-    border-color: var(--shell-accent-deep);
+    border-color: var(--accent-muted);
     background: var(--shell-surface-raised);
   }
 
