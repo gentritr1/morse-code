@@ -432,14 +432,20 @@
 
 /*
  * One dated line, and only when something actually happened. It is the cabin's
- * memory rather than a log: no list, no percentage, no second line.
+ * memory rather than a log: no list, no percentage, no second line — and the
+ * size is what keeps that promise. The longest line the catalog can print,
+ * `22 Aug · first signal read unaided: K`, is 37 monospaced characters; at the
+ * drawer's own label size it measures 236 px against a 239 px content box at
+ * 1280, so it lands on one line instead of becoming a paragraph. Deliberately
+ * not `nowrap`: the size is what makes it fit, so a string this one has not
+ * anticipated wraps under the date rather than overflowing the column.
  */
 .letters-memory {
   color: var(--theme-muted);
   font-family: "DM Mono", "Courier New", monospace;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   line-height: 1.4;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.02em;
   text-wrap: pretty;
 }
 
@@ -857,6 +863,7 @@
 }
 
 .best-tag {
+  flex-shrink: 0;
   padding: 0.125rem var(--space-2);
   border: 1px solid var(--theme-accent);
   border-radius: var(--radius-sm);
@@ -864,6 +871,7 @@
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.12em;
+  white-space: nowrap;
 }
 
 .machine[data-feedback="correct"] .status-line {

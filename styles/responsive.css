@@ -4,8 +4,14 @@
     grid-template-columns: 15rem minmax(0, 1fr);
   }
 
+  /*
+   * Five columns here too. The dot costs 6 px plus a gap, and in this band the
+   * drawer is 2 rem narrower than at 1280, so the width comes out of the label
+   * — which never needs more than `Instant` — rather than out of the fill bar,
+   * which would otherwise sit on its 1 rem floor and read as a dash.
+   */
   .letters-list li {
-    grid-template-columns: 1.25rem 3.25rem minmax(1rem, 1fr) 4.25rem;
+    grid-template-columns: 1.25rem 3.25rem minmax(1rem, 1fr) 3.25rem auto;
   }
 
   .practice-stage {
@@ -63,9 +69,16 @@
     margin-top: 0;
   }
 
+  /*
+   * Five children, five columns. The retention dot is the last cell of the row
+   * it belongs to, not a second row under it: a four-column template wrapped it
+   * onto its own line and made every row in the sheet a line and a half tall.
+   * The dot column is `auto` so it costs exactly the dot, and the fill bar
+   * stays the flexible column.
+   */
   .letters-list li {
     min-height: 2.25rem;
-    grid-template-columns: 1.5rem 4.5rem minmax(2rem, 1fr) 6rem;
+    grid-template-columns: 1.5rem 4.5rem minmax(2rem, 1fr) 6rem auto;
   }
 
   .letters-toggle {
@@ -155,6 +168,23 @@
   .practice-stage {
     padding: var(--space-3);
     --stage-gap: var(--space-3);
+  }
+
+  /*
+   * Sprint is the one mode that puts an extra block on the stage — clock, score
+   * and the time track — and a handset has none of the slack the desk has. So
+   * while that block is on screen the stage keeps a single rhythm, the 0.75 rem
+   * the answer deck already sits at, and the sprint panel's own two rows close
+   * up to match. That is what keeps the time-up state above the fold when the
+   * result line wraps to two rows and the NEW BEST tag joins it. Learn and Send
+   * keep the roomier spacing they already fit in.
+   */
+  .machine[data-mode="sprint"] .practice-view {
+    gap: var(--space-3);
+  }
+
+  .machine[data-mode="sprint"] .sprint-panel {
+    gap: var(--space-1);
   }
 
   .intro-core {
@@ -271,6 +301,11 @@
 
   body[data-theme="pocket"] .practice-stage {
     padding: var(--space-3);
+  }
+
+  /* The LCD bezel around the sprint readout is the last handset-only slack. */
+  body[data-theme="pocket"] .machine[data-mode="sprint"] .sprint-panel {
+    padding-block: var(--space-1);
   }
 
   body[data-theme="pocket"] .intro-card,

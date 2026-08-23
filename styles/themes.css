@@ -307,6 +307,12 @@ body[data-theme="pocket"] .replay-copy {
   color: var(--lcd-ink);
 }
 
+/* The accent is the LCD glass itself, so the NEW BEST tag needs ink to exist. */
+body[data-theme="pocket"] .best-tag {
+  border-color: var(--lcd-ink);
+  color: var(--lcd-ink);
+}
+
 body[data-theme="pocket"] .machine[data-reveal="shown"] .signal-bars span,
 body[data-theme="pocket"] .intro-signal span,
 body[data-theme="pocket"] .send-mark:not(.placeholder):not([data-match="false"]),
