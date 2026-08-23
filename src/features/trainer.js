@@ -12,8 +12,10 @@ import {
   VALID_MODES,
 } from "../config.js";
 import { MORSE, NOTES, spokenPattern, visiblePattern } from "../data/morse.js";
+import { WATCH_KEYS } from "../data/nights.js";
 import { scheduleDurationMs, scheduleText } from "../platform/morse-audio.js";
 import { animateMarks, buildAnswerGrid, PLAYBACK_LEAD_MS, renderSignal } from "../ui/signals.js";
+import { LOCKED_LINE as WATCH_LOCKED_LINE } from "./nightwatch.js";
 import {
   gradeLetter,
   letterBaseline,
@@ -45,12 +47,13 @@ import {
   writeProgress,
 } from "./progress.js";
 
-const MODE_LABELS = Object.freeze({ learn: "LEARN", sprint: "SPRINT", send: "SEND" });
+const MODE_LABELS = Object.freeze({ learn: "LEARN", sprint: "SPRINT", send: "SEND", watch: "WATCH" });
 
 const KEYBOARD_HELP = Object.freeze({
   learn: "Space · replay   A–Z · answer   Enter · hint",
   sprint: "Space · replay   A–Z · answer   Enter · start",
   send: "Tap · dot   Hold · dash   Space · paddle",
+  watch: "A–Z · copy   Space · gap or key   Enter · send",
 });
 
 export function createTrainerController(context) {
@@ -102,6 +105,20 @@ export function createTrainerController(context) {
 
   function sprintUnlocked() {
     return state.progress.unlocked >= SPRINT_UNLOCK_AT;
+  }
+
+  /**
+   * Night Watch opens on the scheduler's own labels — every letter Stable or
+   * Instant — and is asked for rather than mirrored, so the gate can never
+   * disagree with the drawer.
+   */
+  function watchUnlocked() {
+    return context.nightwatch?.unlocked() ?? false;
+  }
+
+  /** True while the ten answer keys belong to a Night Watch copy window. */
+  function watchCopying() {
+    return state.mode === "watch" && Boolean(context.nightwatch?.copyOpen());
   }
 
   function mainActionLabel() {
@@ -198,6 +215,7 @@ export function createTrainerController(context) {
     const isLearn = state.mode === "learn";
     const isSprint = state.mode === "sprint";
     const isSend = state.mode === "send";
+    const isWatch = state.mode === "watch";
     const showIntro = Boolean(state.introLetter);
     const showContact = !showIntro && isLearn && state.contactOpen;
     const showArrival = !showIntro && !showContact && isLearn && state.arrivalOpen;
@@ -217,7 +235,8 @@ export function createTrainerController(context) {
     document.body.dataset.theme = state.theme;
 
     for (const button of elements.modeButtons) {
-      const locked = button.dataset.mode === "sprint" && !sprintUnlocked();
+      const locked = (button.dataset.mode === "sprint" && !sprintUnlocked())
+        || (button.dataset.mode === "watch" && !watchUnlocked());
       button.setAttribute("aria-pressed", String(button.dataset.mode === state.mode));
       button.setAttribute("aria-disabled", String(locked));
     }
@@ -240,9 +259,12 @@ export function createTrainerController(context) {
     elements.contactCard.hidden = !showContact;
     elements.arrivalCard.hidden = !showArrival;
     elements.sessionCard.hidden = !showSession;
-    elements.practiceView.hidden = showCard || isSend;
+    elements.practiceView.hidden = showCard || isSend || isWatch;
     elements.sendView.hidden = showCard || !isSend;
-    elements.answerDeck.hidden = showCard || isSend;
+    elements.watchView.hidden = !isWatch;
+    // The ten keys are the copy input in Night Watch too, and they are on
+    // screen only while a copy window is open.
+    elements.answerDeck.hidden = showCard || isSend || (isWatch && !watchCopying());
     elements.sprintPanel.hidden = !isSprint;
     renderIntro();
     // The transmission the learner cannot read yet stays uniform: the marks
@@ -299,7 +321,9 @@ export function createTrainerController(context) {
     buildAnswerGrid(elements.answerGrid, pool(), answer);
     // The keys stay on screen while the signal sounds — dimmed, not removed, so
     // nothing shifts under the hand — and only open once the last tone has gone.
-    const answersEnabled = !state.locked && !state.playing && (!isSprint || state.running);
+    const answersEnabled = isWatch
+      ? watchCopying()
+      : !state.locked && !state.playing && (!isSprint || state.running);
     const settled = state.lastOutcome !== null;
     for (const button of elements.answerGrid.children) {
       button.disabled = !answersEnabled;
@@ -335,13 +359,26 @@ export function createTrainerController(context) {
       announce(`Sprint unlocks at ${SPRINT_UNLOCK_AT} letters.`);
       return;
     }
+    // One honest line in the status area the learner is already reading.
+    if (mode === "watch" && !watchUnlocked()) {
+      state.status = WATCH_LOCKED_LINE;
+      context.render();
+      announce(WATCH_LOCKED_LINE);
+      return;
+    }
     if (mode === state.mode) return;
 
     clearPendingRound();
     stopSprint();
     if (state.mode === "send") context.send.deactivate();
+    if (state.mode === "watch") context.nightwatch.deactivate();
     state.mode = mode;
     state.introLetter = null;
+    // Leaving Learn walks away from its greeting cards. The flags must drop
+    // with the cards: a hidden card that stays "open" silently swallows the
+    // first Enter in the next mode (the keyboard dismiss branches run first).
+    state.contactOpen = false;
+    state.arrivalOpen = false;
     state.transmission = null;
     state.sessionDone = false;
     state.typed = "";
@@ -363,6 +400,10 @@ export function createTrainerController(context) {
     state.signalHeard = false;
     if (mode === "send") {
       context.send.activate();
+      context.render();
+    } else if (mode === "watch") {
+      state.status = "";
+      context.nightwatch.activate();
       context.render();
     } else if (mode === "sprint") {
       state.roundType = "letter";
@@ -768,6 +809,12 @@ export function createTrainerController(context) {
   }
 
   function answer(letter) {
+    // In Night Watch the same ten keys type a copy line rather than name a
+    // character: nothing there is scored, so it never reaches this round.
+    if (state.mode === "watch") {
+      context.nightwatch.typeLetter(letter);
+      return;
+    }
     if (state.locked || cardOpen()) return;
     // An answer given before the last tone is not a fast answer, it is a guess
     // against a signal that has not finished arriving. It is dropped in
@@ -796,6 +843,10 @@ export function createTrainerController(context) {
   }
 
   function backspace() {
+    if (state.mode === "watch") {
+      context.nightwatch.backspace();
+      return;
+    }
     if (state.locked || cardOpen() || !state.typed) return;
     let typed = state.typed;
     while (typed.endsWith(" ")) typed = typed.slice(0, -1);
@@ -1314,6 +1365,9 @@ export function createTrainerController(context) {
       if (activatable) return;
       event.preventDefault();
       if (state.mode === "send") context.send.playTarget();
+      // Space is the word gap while copying; the paddle owns it while keying,
+      // and the paddle is a button, so it is already handled above.
+      else if (state.mode === "watch") context.nightwatch.wordGap();
       else replaySignal();
       return;
     }
@@ -1344,6 +1398,11 @@ export function createTrainerController(context) {
         startSession();
         return;
       }
+      if (state.mode === "watch") {
+        event.preventDefault();
+        context.nightwatch.confirm();
+        return;
+      }
       if (state.mode !== "send") {
         event.preventDefault();
         showHintOrAdvance();
@@ -1352,6 +1411,12 @@ export function createTrainerController(context) {
     }
 
     const letter = event.key.toUpperCase();
+    if (state.mode === "watch") {
+      if (!WATCH_KEYS.includes(letter)) return;
+      event.preventDefault();
+      context.nightwatch.typeLetter(letter);
+      return;
+    }
     if (state.mode !== "send" && !cardOpen() && /^[A-Z]$/.test(letter)) {
       event.preventDefault();
       answer(letter);
@@ -1364,6 +1429,10 @@ export function createTrainerController(context) {
    * can never be a first listen and can never qualify for a longer interval.
    */
   function markInterrupted() {
+    if (state.mode === "watch") {
+      context.nightwatch.markInterrupted();
+      return;
+    }
     if (state.mode === "send" || state.locked || cardOpen()) return;
     state.roundInterrupted = true;
   }

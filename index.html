@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="./styles/foundation.css" />
     <link rel="stylesheet" href="./styles/guide.css" />
     <link rel="stylesheet" href="./styles/trainer.css" />
+    <link rel="stylesheet" href="./styles/nightwatch.css" />
     <link rel="stylesheet" href="./styles/themes.css" />
     <link rel="stylesheet" href="./styles/responsive.css" />
     <link rel="stylesheet" href="./styles/accessibility.css" />
@@ -38,6 +39,7 @@
         <button type="button" data-mode="learn" aria-pressed="true">Learn</button>
         <button type="button" data-mode="sprint" aria-pressed="false" aria-disabled="true">Sprint</button>
         <button type="button" data-mode="send" aria-pressed="false">Send</button>
+        <button type="button" data-mode="watch" aria-pressed="false" aria-disabled="true">Watch</button>
       </div>
 
       <button
@@ -222,6 +224,57 @@
               <div class="send-actions">
                 <button class="secondary-action" type="button" id="sendClear" disabled>Clear</button>
                 <button class="primary-action" type="button" id="sendCheck" disabled>Check</button>
+              </div>
+            </div>
+
+            <div class="watch-view" id="watchView" hidden>
+              <div class="watch-card" id="watchCard" hidden>
+                <span class="intro-tag" id="watchCardTag">Night Watch</span>
+                <strong class="watch-card-title" id="watchCardTitle"></strong>
+                <p class="watch-card-body" id="watchCardBody"></p>
+                <p class="watch-card-note" id="watchCardNote" hidden></p>
+                <div class="watch-memory" id="watchMemory" hidden>
+                  <pre class="watch-art" id="watchArt" aria-hidden="true"></pre>
+                  <div class="watch-mosaic" id="watchMosaic" aria-hidden="true"></div>
+                  <p class="watch-memory-line" id="watchMemoryLine"></p>
+                </div>
+                <div class="intro-actions">
+                  <button class="primary-action" type="button" id="watchCardAction">Take the watch</button>
+                </div>
+              </div>
+
+              <div class="watch-live" id="watchLive" hidden>
+                <div class="watch-talk" id="watchTalk" aria-live="polite" hidden></div>
+                <p class="watch-kicker" id="watchKicker" hidden></p>
+                <div class="watch-lamp" id="watchLamp" data-lamp="off" aria-hidden="true">
+                  <span class="watch-lamp-glow"></span>
+                  <span class="watch-lamp-label" id="watchLampLabel"></span>
+                </div>
+                <span class="signal-bars watch-signal" id="watchSignal" aria-hidden="true" hidden></span>
+                <p class="status-line" id="watchStatus"></p>
+                <div class="decode-line watch-decode" id="watchDecode" hidden>
+                  <span id="watchDecodeLabel">Copy</span>
+                  <strong id="watchDecodeText">·</strong>
+                </div>
+                <div class="watch-options" id="watchOptions" role="group" aria-label="Reply" hidden></div>
+                <button
+                  class="send-pad watch-pad"
+                  type="button"
+                  id="watchPad"
+                  hidden
+                  aria-label="Morse paddle. Tap for a dot or hold for a dash."
+                >
+                  <span>Key it back</span>
+                  <small>Space works too</small>
+                </button>
+                <div class="send-readout watch-readout" id="watchSequence" aria-label="Nothing keyed yet" hidden></div>
+                <div class="watch-actions" id="watchActions" hidden>
+                  <button class="secondary-action" type="button" id="watchRepeat">Repeat</button>
+                  <button class="secondary-action" type="button" id="watchGap">Word gap</button>
+                  <button class="secondary-action" type="button" id="watchBack">Back</button>
+                  <button class="primary-action" type="button" id="watchConfirm">Send copy</button>
+                </div>
+                <div class="watch-transcript" id="watchTranscript" aria-label="Transcript" hidden></div>
               </div>
             </div>
 

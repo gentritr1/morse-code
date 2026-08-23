@@ -8,6 +8,7 @@ import {
 } from "./config.js";
 import { appendEvent, readEvents, writeEvents } from "./features/events.js";
 import { createGuideController } from "./features/guide.js";
+import { createNightWatchController, nightWatchUnlocked } from "./features/nightwatch.js";
 import { readPerformanceProfile, recordPerformance as updatePerformanceProfile } from "./features/performance-profile.js";
 import {
   LEGACY_MODES,
@@ -46,10 +47,15 @@ function storedMode() {
   return VALID_MODES.includes(stored) ? stored : "learn";
 }
 
-/** Sprint is earned. Asking for it too early lands on Learn without a scolding. */
-function initialMode(unlocked) {
+/**
+ * Sprint and Night Watch are both earned. Asking for either too early lands on
+ * Learn without a scolding.
+ */
+function initialMode(unlocked, profile) {
   const requested = storedMode();
-  return requested === "sprint" && unlocked < SPRINT_UNLOCK_AT ? "learn" : requested;
+  if (requested === "sprint" && unlocked < SPRINT_UNLOCK_AT) return "learn";
+  if (requested === "watch" && !nightWatchUnlocked(profile)) return "learn";
+  return requested;
 }
 
 function initialDifficulty() {
@@ -63,7 +69,7 @@ const progress = markSeededFromHistory(readProgress(storage), performanceProfile
 // The station callsign is minted on the first read that finds none. Writing the
 // record back here is what makes it the same callsign on the next visit.
 writeProgress(storage, progress);
-const mode = initialMode(progress.unlocked);
+const mode = initialMode(progress.unlocked, performanceProfile);
 const difficulty = initialDifficulty();
 const pool = unlockedLetters(progress);
 
@@ -183,6 +189,7 @@ const context = {
   send: null,
   settings: null,
   letters: null,
+  nightwatch: null,
 };
 
 context.persistProfile = () => storage.setJson(STORAGE_KEYS.performance, state.performanceProfile);
@@ -204,12 +211,14 @@ context.guide = createGuideController(context);
 context.send = createSendController(context);
 context.settings = createSettingsController(context);
 context.letters = createLettersController(context);
+context.nightwatch = createNightWatchController(context);
 context.render = () => {
   context.trainer.render();
   context.guide.render();
   context.send.render();
   context.settings.render();
   context.letters.render();
+  context.nightwatch.render();
 };
 Object.seal(context);
 
@@ -218,16 +227,21 @@ context.guide.bind();
 context.send.bind();
 context.settings.bind();
 context.letters.bind();
+context.nightwatch.bind();
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") {
     context.send.finishPress(true);
     // A hidden page is not practising. The signal stops, the auto-advance
-    // stops, and the round waits rather than running out in an empty room.
+    // stops, and the round waits rather than running out in an empty room. A
+    // Night Watch beat cannot be paused mid-transmission by six other people,
+    // so what it loses instead is the right to count.
+    context.nightwatch.pause();
     context.trainer.pauseRound();
     return;
   }
   if (state.running) context.trainer.updateSprint();
+  context.nightwatch.resume();
   context.trainer.resumeRound();
 });
 
@@ -235,3 +249,6 @@ context.render();
 // The trainer picks the first exercise too — the learner never chooses one. A
 // returning learner is greeted with what is waiting before anything plays.
 if (state.mode === "learn") context.trainer.startVisit();
+// Night Watch reads its own record on entry, and entering it by URL or by a
+// remembered mode is still entering it.
+if (state.mode === "watch") context.nightwatch.activate();

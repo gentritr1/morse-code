@@ -327,7 +327,10 @@ body[data-theme="pocket"] .practice-stage {
 
 body[data-theme="pocket"] .intro-card,
 body[data-theme="pocket"] .practice-view,
-body[data-theme="pocket"] .send-view {
+body[data-theme="pocket"] .send-view,
+/* Night Watch is a stage block like the others: on this machine it is glass. */
+body[data-theme="pocket"] .watch-card,
+body[data-theme="pocket"] .watch-live {
   padding: var(--space-4);
   border: 4px solid oklch(0.19 0.008 250);
   border-radius: var(--radius-sm);
@@ -361,8 +364,70 @@ body[data-theme="pocket"] .decode-line strong,
 body[data-theme="pocket"] .sprint-copy,
 body[data-theme="pocket"] .send-target,
 body[data-theme="pocket"] .send-target strong,
-body[data-theme="pocket"] .replay-copy {
+body[data-theme="pocket"] .replay-copy,
+body[data-theme="pocket"] .watch-card-title,
+body[data-theme="pocket"] .watch-card-body,
+body[data-theme="pocket"] .watch-memory-line,
+body[data-theme="pocket"] .watch-talk p,
+body[data-theme="pocket"] .watch-talk p b {
   color: var(--lcd-ink);
+}
+
+/*
+ * The rest of the Night Watch furniture, inked at the weights it reads at on
+ * paper: the operators full strength, the procedure line under them, the
+ * transcript quieter still. Nothing in here is a literal; every value is the
+ * panel's own ink mixed back toward the glass.
+ */
+body[data-theme="pocket"] .watch-card-note,
+body[data-theme="pocket"] .watch-kicker {
+  color: color-mix(in oklch, var(--lcd-ink) 72%, var(--lcd-bg));
+}
+
+body[data-theme="pocket"] .watch-talk {
+  border-color: color-mix(in oklch, var(--lcd-ink) 30%, var(--lcd-bg));
+  background: color-mix(in oklch, var(--lcd-ink) 8%, var(--lcd-bg));
+}
+
+body[data-theme="pocket"] .watch-lamp {
+  border-color: color-mix(in oklch, var(--lcd-ink) 30%, var(--lcd-bg));
+  background: color-mix(in oklch, var(--lcd-ink) 8%, var(--lcd-bg));
+}
+
+body[data-theme="pocket"] .watch-lamp-glow {
+  background: var(--lcd-ink);
+}
+
+body[data-theme="pocket"] .watch-lamp-label {
+  color: color-mix(in oklch, var(--lcd-ink) 70%, var(--lcd-bg));
+}
+
+body[data-theme="pocket"] .watch-lamp[data-lamp="rx"] .watch-lamp-label,
+body[data-theme="pocket"] .watch-lamp[data-lamp="open"] .watch-lamp-label {
+  color: var(--lcd-bg);
+}
+
+body[data-theme="pocket"] .watch-transcript {
+  border-block-start-color: color-mix(in oklch, var(--lcd-ink) 25%, var(--lcd-bg));
+}
+
+body[data-theme="pocket"] .watch-transcript p {
+  color: color-mix(in oklch, var(--lcd-ink) 55%, var(--lcd-bg));
+}
+
+body[data-theme="pocket"] .watch-transcript p[data-dir="tx"] {
+  color: color-mix(in oklch, var(--lcd-ink) 80%, var(--lcd-bg));
+}
+
+body[data-theme="pocket"] .watch-option {
+  border-color: color-mix(in oklch, var(--lcd-ink) 55%, var(--lcd-bg));
+  color: var(--lcd-ink);
+}
+
+/* The pictogram is already on glass; it does not need a second panel. */
+body[data-theme="pocket"] .watch-mosaic {
+  padding: 0;
+  background: transparent;
 }
 
 /*
@@ -374,7 +439,10 @@ body[data-theme="pocket"] .replay-copy {
  */
 body[data-theme="pocket"] .intro-card,
 body[data-theme="pocket"] .practice-view,
-body[data-theme="pocket"] .send-view {
+body[data-theme="pocket"] .send-view,
+/* Night Watch is a stage block like the others: on this machine it is glass. */
+body[data-theme="pocket"] .watch-card,
+body[data-theme="pocket"] .watch-live {
   --focus: var(--lcd-ink);
 }
 
@@ -495,6 +563,10 @@ body[data-theme="pocket"] .machine-footer {
   body[data-theme="pocket"] .answer-key:hover {
     background: var(--theme-accent);
     color: var(--theme-on-accent);
+  }
+
+  body[data-theme="pocket"] .watch-option:hover {
+    background: color-mix(in oklch, var(--lcd-ink) 12%, var(--lcd-bg));
   }
 }
 }

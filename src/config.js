@@ -9,6 +9,7 @@ export const STORAGE_KEYS = Object.freeze({
   performance: "morse-trainer-performance-v1",
   progress: "morse-trainer-progress-v1",
   events: "morse-trainer-events-v1",
+  nightwatch: "morse-trainer-nightwatch-v1",
 });
 
 /**
@@ -57,7 +58,7 @@ export const SPEEDS = Object.freeze({
   brisk: { label: "Brisk", charWpm: 25, effectiveWpm: 14, hint: "25 wpm · tight gaps" },
 });
 
-export const VALID_MODES = Object.freeze(["learn", "sprint", "send"]);
+export const VALID_MODES = Object.freeze(["learn", "sprint", "send", "watch"]);
 
 /** A letter counts as known only after this many clean first listens. */
 export const FIRST_LISTEN_MIN = 5;

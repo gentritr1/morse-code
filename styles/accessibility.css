@@ -20,7 +20,8 @@
   .signal-button,
   .send-pad,
   .answer-key,
-  .letters-toggle {
+  .letters-toggle,
+  .watch-option {
     transform: none !important;
     transition-property: color, background-color, border-color, opacity;
   }
@@ -31,6 +32,7 @@
   .intro-card,
   .practice-view,
   .send-view,
+  .watch-view,
   .settings-panel,
   .typed-slot {
     transform: none !important;

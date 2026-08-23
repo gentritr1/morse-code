@@ -12,11 +12,13 @@ src/
 ├── config.js                  Stable product configuration
 ├── data/
 │   ├── morse.js               Morse domain data and pattern helpers
+│   ├── nights.js              Night Watch: operators, Watches, nights, and the layer audit
 │   ├── transmissions.js       The unknown-transmission catalog
 │   └── words.js               Common words built from the starter pool
 ├── features/
 │   ├── events.js              Append-only attempt log and retention windows
 │   ├── guide.js               First-run guide dialog
+│   ├── nightwatch.js          Night Watch: the night state machine and its stage
 │   ├── performance-profile.js Pure retention scheduling and recognition
 │   ├── placement.js           Pure same-or-different placement trial
 │   ├── progress.js            Pure progression rules and the round policy
@@ -120,6 +122,7 @@ styles/
 ├── foundation.css      Tokens, reset, app bar, and the settings popover/sheet
 ├── guide.css           First-run guide dialog
 ├── trainer.css         Machine, letters drawer, stage, intro card, and Send
+├── nightwatch.css      Night Watch: the Layer 2 strip, lamp, transcript, memory cards
 ├── themes.css          Theme tokens plus Terminal, Teletext, and Pocket variants
 ├── responsive.css      Viewport and orientation adaptations
 └── accessibility.css   Reduced motion and forced-colors support
@@ -138,6 +141,12 @@ The interface intentionally uses native platform features where they improve the
 - cascade layers, `oklch()`, and `color-mix()` for predictable theme styling
 - Pointer Events and Web Audio for the Morse paddle
 - `prefers-reduced-motion` and `forced-colors` adaptations
+
+**Night Watch is locked on evidence and writes none of its own.** `src/features/nightwatch.js` is a fourth mode on the same stage. Its gate asks `performance-profile.js` for the *computed* label of each of the ten characters and opens only when every one reads `Stable` or `Instant`; nothing mirrors that state, so the chip and the drawer cannot disagree. Inside a night, nothing is written to `morse-trainer-performance-v1`, `morse-trainer-progress-v1` or the attempt log — a failed night cannot lower a character's stability and a confirmed one cannot raise it, which is what the failure copy means by "Nothing here touches your letters." Its own record lives under `morse-trainer-nightwatch-v1` and is read with the same clamping `readProgress` uses: per-night status and wait timestamp, per-station counts, the unlock flag, the on-air name, and the current night's beat evidence.
+
+The two layers are separated in the data and the separation is enforced offline. `src/data/nights.js` holds the operators (each with a fist, three band reactions and three remembered lines), the four Watches, the nights, and `auditNights()`, which counts (a) Layer 1 strings using anything outside `K M R S A T O I N E` and the word space, and (b) Layer 2 lines that share a content word with the transmission they precede. Both counts are zero, over 38 strings. The learner's callsign carries digits, which cannot be keyed in ten letters, so an on-air name is derived from it by a stable hash into a pool of names that can — the same callsign gives the same name in every session, and the name is stored so a later change to the pool cannot rename somebody the operators already know.
+
+**A fist is a multiplier on the Cabin's own Farnsworth output, and it is deterministic.** `fistSchedule(text, speed, { fist, watch, seed, mask })` in the audio boundary is pure like `scheduleText`: it scales the unit, the dash and intra ratios and the two Farnsworth gaps, adds per-element jitter and hesitation from a generator seeded on the station and the message, and returns the array that drives both the oscillators and the marks on screen. `Math.random` never touches it, so the same operator sending the same line is the same sound every time — which is the only thing that makes a fist learnable. Watch 1 interpolates every deviation 60 % of the way back toward textbook 1:3:1. `MorseAudio.playFist` puts the Watch's conditions on the graph as real node parameters rather than as numbers in an object: the noise bed is a band-passed buffer at the Watch's own gain, the amplitude fade is an LFO wired into a master gain the tones pass through, and a dropped element is that element's own envelope.
 
 ## Extending the product
 

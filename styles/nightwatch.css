@@ -1,0 +1,408 @@
+@layer nightwatch {
+/*
+ * Night Watch adds two pieces of furniture the stage did not have: the Layer 2
+ * strip, where six people are people, and the transcript under the paddle. Both
+ * are additions rather than borrowings, and both were argued for on the same
+ * ground — a multi-beat conversation is illegible without somewhere to glance
+ * back at. Everything else on this surface is the machine's existing furniture:
+ * the status line, the decode line, the paddle, the ten answer keys.
+ *
+ * Every colour in here resolves to a theme token. There is no literal and no
+ * palette of its own: the mode wears whichever machine is switched on.
+ */
+
+.watch-view {
+  grid-area: 1 / 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--theme-text);
+  transition:
+    var(--theme-crossfade),
+    opacity var(--motion-stage) var(--ease-out),
+    transform var(--motion-stage) var(--ease-out),
+    display var(--motion-stage-exit) allow-discrete;
+}
+
+.watch-view[hidden] {
+  opacity: 0;
+  transform: translateY(4px);
+  transition-duration: var(--motion-stage-exit);
+}
+
+@starting-style {
+  .watch-view {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* ── The card slot: locked, unlock, brief, off air, debrief ─────────────── */
+
+.watch-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.watch-card[hidden] {
+  display: none;
+}
+
+.watch-card-title {
+  max-width: 28ch;
+  color: var(--theme-accent);
+  font-size: 1.5rem;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.watch-card-body {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 1rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.watch-card-note {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+/* ── Layer 2: three lines, oldest dropping off ──────────────────────────── */
+
+.watch-talk {
+  width: 100%;
+  max-width: 46ch;
+  min-height: 3.75rem;
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--theme-faint);
+  border-radius: var(--theme-radius);
+  background: color-mix(in oklab, var(--theme-accent) 4%, var(--theme-surface));
+  text-align: start;
+}
+
+.watch-talk[hidden] {
+  display: none;
+}
+
+.watch-talk p {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.watch-talk p b {
+  margin-inline-end: var(--space-2);
+  color: var(--theme-accent);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+}
+
+.watch-kicker {
+  margin: 0;
+  color: var(--theme-muted);
+  font-family: var(--theme-font);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.watch-kicker[hidden] {
+  display: none;
+}
+
+/* ── The lamp: the only clock in the mode ───────────────────────────────── */
+
+.watch-lamp {
+  --glow: 0;
+  --glow-ms: 240ms;
+  position: relative;
+  width: min(100%, 22rem);
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--theme-faint);
+  border-radius: var(--theme-radius);
+  background: var(--theme-surface);
+}
+
+.watch-lamp[hidden] {
+  display: none;
+}
+
+.watch-lamp-glow {
+  position: absolute;
+  inset: 0;
+  background: var(--theme-accent);
+  opacity: var(--glow);
+  transition: opacity var(--glow-ms) linear;
+}
+
+.watch-lamp-label {
+  position: relative;
+  color: var(--theme-muted);
+  font-family: var(--theme-font);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+}
+
+.watch-lamp[data-lamp="rx"] .watch-lamp-label,
+.watch-lamp[data-lamp="open"] .watch-lamp-label {
+  color: var(--theme-on-accent);
+}
+
+.watch-signal {
+  min-height: 0.75rem;
+}
+
+.watch-signal[hidden] {
+  display: none;
+}
+
+/* ── Copy, reply, keying ────────────────────────────────────────────────── */
+
+.watch-decode {
+  width: min(100%, 34rem);
+}
+
+.watch-decode[hidden] {
+  display: none;
+}
+
+.watch-decode strong {
+  overflow-wrap: anywhere;
+}
+
+.watch-decode[data-dir="tx"] strong {
+  color: var(--theme-accent);
+}
+
+.watch-options {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.watch-options[hidden] {
+  display: none;
+}
+
+.watch-option {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--theme-accent);
+  border-radius: var(--theme-radius);
+  background: transparent;
+  color: var(--theme-accent);
+  font-family: var(--theme-font);
+  font-size: 0.9375rem;
+  letter-spacing: 0.06em;
+  transition:
+    background-color var(--motion-ui) var(--ease-out),
+    color var(--motion-ui) var(--ease-out),
+    transform var(--motion-press) var(--ease-out);
+}
+
+.watch-option:active {
+  transform: scale(0.97);
+}
+
+.watch-pad[hidden],
+.watch-readout[hidden] {
+  display: none;
+}
+
+.watch-pad {
+  width: min(100%, 22rem);
+}
+
+.watch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.watch-actions[hidden] {
+  display: none;
+}
+
+.watch-actions button[hidden] {
+  display: none;
+}
+
+/* ── The transcript: what has actually crossed, in both directions ──────── */
+
+.watch-transcript {
+  width: min(100%, 46ch);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-block-start: var(--space-2);
+  border-block-start: 1px dashed var(--theme-faint);
+  text-align: start;
+}
+
+.watch-transcript[hidden] {
+  display: none;
+}
+
+.watch-transcript p {
+  margin: 0;
+  color: var(--theme-faint);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+}
+
+.watch-transcript p[data-dir="tx"] {
+  color: color-mix(in oklab, var(--theme-accent) 55%, var(--theme-surface));
+}
+
+.watch-transcript p b {
+  margin-inline-end: var(--space-2);
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+/* ── The radio memory, drawn three ways ─────────────────────────────────── */
+
+.watch-memory {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.watch-memory[hidden] {
+  display: none;
+}
+
+.watch-art {
+  margin: 0;
+  color: var(--theme-accent);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 0.75rem;
+  line-height: 1.15;
+  white-space: pre;
+}
+
+.watch-mosaic {
+  display: none;
+  grid-template-columns: repeat(var(--columns, 13), var(--cell, 0.75rem));
+  gap: 1px;
+}
+
+.watch-mosaic i {
+  width: var(--cell, 0.75rem);
+  height: var(--cell, 0.75rem);
+  background: transparent;
+}
+
+.watch-mosaic i[data-ink="#"] {
+  background: var(--theme-text);
+}
+
+.watch-mosaic i[data-ink="o"] {
+  background: var(--theme-muted);
+}
+
+.watch-mosaic i[data-ink="-"] {
+  background: var(--theme-faint);
+}
+
+.watch-mosaic i[data-ink="x"] {
+  background: color-mix(in oklab, var(--theme-faint) 55%, transparent);
+}
+
+.watch-memory-line {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--theme-accent);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+/*
+ * Three idioms, one drawing. The terminal prints it, the teletext set builds it
+ * out of mosaic blocks, and the pocket unit draws it as LCD pixels — rounded,
+ * in ink on the panel, because an accent on an LCD is the panel itself.
+ */
+body[data-theme="teletext"] .watch-art,
+body[data-theme="pocket"] .watch-art {
+  display: none;
+}
+
+body[data-theme="teletext"] .watch-mosaic,
+body[data-theme="pocket"] .watch-mosaic {
+  display: grid;
+}
+
+body[data-theme="pocket"] .watch-mosaic {
+  --cell: 0.625rem;
+}
+
+body[data-theme="pocket"] .watch-mosaic i {
+  border-radius: 1px;
+}
+
+body[data-theme="pocket"] .watch-mosaic i[data-ink="#"] {
+  background: var(--lcd-ink);
+}
+
+body[data-theme="pocket"] .watch-mosaic i[data-ink="o"] {
+  background: color-mix(in oklch, var(--lcd-ink) 62%, var(--lcd-bg));
+}
+
+body[data-theme="pocket"] .watch-mosaic i[data-ink="-"] {
+  background: color-mix(in oklch, var(--lcd-ink) 34%, var(--lcd-bg));
+}
+
+body[data-theme="pocket"] .watch-mosaic i[data-ink="x"] {
+  background: color-mix(in oklch, var(--lcd-ink) 18%, var(--lcd-bg));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .watch-option:hover {
+    background: color-mix(in oklab, var(--theme-accent) 18%, var(--theme-surface));
+  }
+}
+
+@media (max-width: 47.9375rem) {
+  .watch-talk {
+    min-height: 3.25rem;
+  }
+
+  .watch-card-body {
+    font-size: 0.9375rem;
+  }
+
+  .watch-transcript p {
+    font-size: 0.625rem;
+  }
+}
+}
