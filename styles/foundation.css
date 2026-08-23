@@ -83,11 +83,30 @@ button {
   touch-action: manipulation;
 }
 
+/*
+ * `tabindex="-1"` marks a programmatic scroll target — #trainer, #machine,
+ * #letters — never a keyboard-tabbable widget. They take focus all the time:
+ * `focusTrainer` parks it there, and the browser hands it to a focusable
+ * ancestor when the element holding it is hidden, which is how pressing Enter
+ * on a card button drew a 3 px ring around the whole machine. Focus still moves
+ * there — Tab order and screen readers rely on it — only the ring is withheld,
+ * because those containers are not controls.
+ */
 button:focus-visible,
 a:focus-visible,
-[tabindex]:focus-visible {
+[tabindex]:not([tabindex="-1"]):focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
+}
+
+/*
+ * Scoping the rule above is not enough on its own: with no author outline left,
+ * the browser's own `:focus-visible` ring takes over and draws a 1 px default
+ * outline around the same container. It has to be said out loud.
+ */
+[tabindex="-1"]:focus,
+[tabindex="-1"]:focus-visible {
+  outline: none;
 }
 
 button:disabled {
@@ -412,6 +431,12 @@ button:disabled {
   border: 0.25rem solid var(--theme-bg);
   background: var(--lcd-bg);
   color: var(--lcd-ink);
+}
+
+/* Two options, one row, equal halves — a switch, not a menu. */
+.pattern-segments button {
+  flex: 1 1 0;
+  text-align: center;
 }
 
 /* Three rows, not three columns: each preset carries a hint that needs room. */

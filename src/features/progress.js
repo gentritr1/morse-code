@@ -78,6 +78,9 @@ export function createProgress() {
     unlocked: STARTING_UNLOCKED,
     newPaused: false,
     effOffset: 0,
+    // The drawer is a map of what has been learned, not a lookup table: the
+    // real patterns stay off it unless the learner deliberately asks for them.
+    showPatterns: false,
     sessions: 0,
     seeded: false,
     // No measurement yet: the trainer starts on the preset the guide offers
@@ -174,6 +177,8 @@ export function readProgress(storage) {
     unlocked: clampUnlocked(stored.unlocked),
     newPaused: Boolean(stored.newPaused),
     effOffset: clampOffset(stored.effOffset),
+    // Additive: a record written before the toggle existed reads as hidden.
+    showPatterns: Boolean(stored.showPatterns),
     sessions: Math.max(0, Math.floor(Number(stored.sessions)) || 0),
     seeded: Boolean(stored.seeded) || (Math.floor(Number(stored.sessions)) || 0) > 0,
     placement: normalisePlacement(stored.placement),
@@ -191,6 +196,7 @@ export function writeProgress(storage, progress) {
     unlocked: progress.unlocked,
     newPaused: Boolean(progress.newPaused),
     effOffset: clampOffset(progress.effOffset),
+    showPatterns: Boolean(progress.showPatterns),
     sessions: Math.max(0, Math.floor(Number(progress.sessions)) || 0),
     seeded: Boolean(progress.seeded),
     placement: normalisePlacement(progress.placement),

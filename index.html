@@ -171,8 +171,7 @@
               </button>
               <div class="decode-line" aria-label="Your answer">
                 <span>Decode</span>
-                <strong id="typedAnswer"><span class="typed-slot empty">_</span></strong>
-                <span class="cursor" aria-hidden="true"></span>
+                <strong id="typedAnswer"><span class="typed-slot empty caret">_</span></strong>
               </div>
               <div class="practice-actions">
                 <button class="secondary-action" type="button" id="replayButton">Replay</button>
@@ -259,6 +258,14 @@
             <span class="preview-screen"><i>· —</i><b>CW-83</b></span>
             <strong>Pocket</strong>
           </button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <span class="settings-label" id="patternGroupLabel">Letter patterns</span>
+        <div class="segmented-control pattern-segments" role="group" aria-labelledby="patternGroupLabel">
+          <button type="button" data-patterns="hidden" aria-pressed="true">Hidden</button>
+          <button type="button" data-patterns="shown" aria-pressed="false">Shown</button>
         </div>
       </div>
 

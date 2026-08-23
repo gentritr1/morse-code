@@ -70,7 +70,7 @@
     transition: background-color 120ms var(--ease-out);
   }
 
-  .cursor,
+  .typed-slot.caret::after,
   .answer-key.was-correct,
   .session-stats dd[data-pop="true"],
   .status-line[data-pop="true"] {
@@ -95,7 +95,7 @@
   .measure-progress span,
   .first-signal-pattern i,
   .guide-dots span,
-  .cursor,
+  .typed-slot.caret::after,
   .time-track span,
   .send-mark,
   .session-rail i,

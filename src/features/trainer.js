@@ -131,6 +131,9 @@ export function createTrainerController(context) {
       slots.push(text[index] === " " ? " " : (state.typed[index] ?? "_"));
     }
     const value = slots.join("");
+    // The caret is the next slot that will receive a letter — the decode line
+    // has exactly as many positions as the message, and one of them blinks.
+    const caretIndex = slots.indexOf("_");
     if (value === renderedAnswer) return;
     // Only the character that just landed pops; the ones already on screen stay put.
     const typedCount = [...state.typed].filter((character) => character !== " ").length;
@@ -148,6 +151,7 @@ export function createTrainerController(context) {
           ? "typed-slot empty"
           : character === " " ? "typed-slot gap" : "typed-slot";
         if (index === newest) slot.classList.add("typed-value");
+        if (index === caretIndex) slot.classList.add("caret");
         slot.textContent = character === " " ? "\u00a0" : character;
         return slot;
       }),
@@ -1280,12 +1284,34 @@ export function createTrainerController(context) {
     newRound(false);
   }
 
+  /**
+   * THE TRAP: bailing out on `event.target.closest("button, …")` reads as
+   * correct — do not steal keys from a focused control — but in this machine a
+   * button holds focus nearly all the time: the guide hands focus to
+   * #signalButton on Start, every card button keeps it, and Replay, Show hint
+   * and every answer key take it on click. Under that bail, typing a letter did
+   * nothing for most of a session. A–Z and Backspace are the machine's own keys
+   * and no button does anything with them, so they are handled wherever focus
+   * sits. Only Space and Enter — the two keys a focused button activates
+   * natively — defer, so Space on "Show hint" hints once instead of hinting and
+   * replaying.
+   */
   function handleKeydown(event) {
     if (state.onboardingOpen || state.lettersOpen || state.roundPaused) return;
+    // Settings covers the stage even in modes that do not pause a round.
+    if (elements.settingsPanel.matches(":popover-open")) return;
     const target = event.target;
-    if (target instanceof Element && target.closest("button, input, textarea, a, [popover]")) return;
+    // The one focus owner that genuinely owns every key: somewhere to type.
+    if (target instanceof Element
+      && (target.matches("input, textarea, select") || target.isContentEditable)) return;
+    // A control the browser itself activates with Space or Enter. Handling
+    // those here as well would fire the round action twice.
+    const activatable = target instanceof Element
+      ? target.closest("button, a[href], summary, [popover]")
+      : null;
 
     if (event.code === "Space") {
+      if (activatable) return;
       event.preventDefault();
       if (state.mode === "send") context.send.playTarget();
       else replaySignal();
@@ -1297,6 +1323,7 @@ export function createTrainerController(context) {
       return;
     }
     if (event.key === "Enter") {
+      if (activatable) return;
       if (state.contactOpen) {
         event.preventDefault();
         dismissContact();

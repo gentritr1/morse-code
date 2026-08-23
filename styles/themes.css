@@ -316,7 +316,7 @@ body[data-theme="pocket"] .best-tag {
 body[data-theme="pocket"] .machine[data-reveal="shown"] .signal-bars span,
 body[data-theme="pocket"] .intro-signal span,
 body[data-theme="pocket"] .send-mark:not(.placeholder):not([data-match="false"]),
-body[data-theme="pocket"] .cursor,
+body[data-theme="pocket"] .typed-slot.caret::after,
 body[data-theme="pocket"] .time-track span {
   background: var(--lcd-ink);
 }

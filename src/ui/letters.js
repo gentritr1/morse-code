@@ -40,13 +40,44 @@ export function createLettersController(context) {
     return Array.from(MORSE[letter], () => "·").join(" ");
   }
 
+  /** A character the learner has met: the pattern is no longer a secret. */
+  function heardLetter(letter) {
+    const metrics = state.performanceProfile.letters[letter];
+    return metrics.attempts > 0 || metrics.exposures > 0 || state.revealedLetters.includes(letter);
+  }
+
+  /**
+   * The drawer must not be readable as an answer key. An unlocked row prints a
+   * fixed three uniform squares — the same three for every character — so neither
+   * the shape nor even the number of marks can be copied off the column during
+   * a round. The real pattern appears in exactly two places: while the learner
+   * has asked for it in settings, and on the row of the letter they have just
+   * answered or been shown, for as long as that round is settled.
+   */
+  function paintPattern(cell, letter, index, revealed) {
+    if (!cell) return;
+    const unlocked = index < state.progress.unlocked;
+    const real = unlocked && heardLetter(letter) && (Boolean(state.progress.showPatterns) || revealed);
+    const key = !unlocked ? "locked" : real ? "real" : "masked";
+    if (cell.dataset.mode === key) return;
+    cell.dataset.mode = key;
+
+    if (key === "masked") {
+      cell.removeAttribute("data-placeholder");
+      cell.dataset.masked = "true";
+      cell.replaceChildren(...[0, 1, 2].map(() => document.createElement("i")));
+      return;
+    }
+    cell.removeAttribute("data-masked");
+    if (key === "locked") cell.dataset.placeholder = "true";
+    else cell.removeAttribute("data-placeholder");
+    cell.textContent = key === "locked" ? dimmedPattern(letter) : visiblePattern(MORSE[letter]);
+  }
+
   function buildRow(letter, index) {
     const now = Date.now();
     const unlocked = index < state.progress.unlocked;
     const metrics = state.performanceProfile.letters[letter];
-    // Heard, not scored: an interrupted or replay-assisted round still means
-    // the learner has met the character, so the pattern stops being a secret.
-    const heard = metrics.attempts > 0 || metrics.exposures > 0 || state.revealedLetters.includes(letter);
     const row = document.createElement("li");
     row.dataset.letter = letter;
     row.dataset.locked = String(!unlocked);
@@ -54,14 +85,10 @@ export function createLettersController(context) {
     const letterCell = document.createElement("strong");
     letterCell.textContent = letter;
 
+    // Painted by the render pass, not here: what a row may show changes with
+    // the round, and the row cache does not rebuild for that.
     const pattern = document.createElement("span");
     pattern.className = "letter-pattern";
-    if (unlocked && heard) {
-      pattern.textContent = visiblePattern(MORSE[letter]);
-    } else {
-      pattern.textContent = dimmedPattern(letter);
-      pattern.dataset.placeholder = "true";
-    }
 
     const track = document.createElement("span");
     track.className = "recognition-track";
@@ -153,8 +180,13 @@ export function createLettersController(context) {
       elements.lettersList.replaceChildren(...KOCH_ORDER.map(buildRow));
       elements.lettersList.dataset.renderKey = renderKey;
     }
+    let index = 0;
     for (const row of elements.lettersList.children) {
-      row.classList.toggle("current", highlight.includes(row.dataset.letter));
+      const letter = row.dataset.letter;
+      const revealed = highlight.includes(letter);
+      row.classList.toggle("current", revealed);
+      paintPattern(row.querySelector(".letter-pattern"), letter, index, revealed);
+      index += 1;
     }
 
     elements.lettersToggle.setAttribute("aria-expanded", String(state.lettersOpen));

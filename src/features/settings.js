@@ -38,7 +38,7 @@ export function createSettingsController(context) {
   }
 
   function groupFor(element) {
-    return element.closest(".machine-picker, .speed-segments");
+    return element.closest(".machine-picker, .speed-segments, .pattern-segments");
   }
 
   function handleGroupKeydown(event) {
@@ -88,7 +88,24 @@ export function createSettingsController(context) {
     announce("Progress reset. You are back to two letters.");
   }
 
+  /**
+   * The drawer's patterns are a deliberate crutch, so turning them on is a
+   * deliberate act. It is a progress field rather than a preference key: reset
+   * puts the map back to hidden along with everything else it teaches.
+   */
+  function setPatterns(shown) {
+    if (Boolean(state.progress.showPatterns) === shown) return;
+    state.progress.showPatterns = shown;
+    writeProgress(storage, state.progress);
+    context.render();
+    announce(shown ? "Letter patterns shown in the drawer." : "Letter patterns hidden in the drawer.");
+  }
+
   function render() {
+    for (const button of elements.patternButtons) {
+      const shown = button.dataset.patterns === "shown";
+      button.setAttribute("aria-pressed", String(shown === Boolean(state.progress.showPatterns)));
+    }
     for (const button of elements.themeButtons) {
       button.setAttribute("aria-pressed", String(button.dataset.themeChoice === state.theme));
     }
@@ -139,6 +156,11 @@ export function createSettingsController(context) {
       button.addEventListener("click", () => {
         if (Object.hasOwn(SPEEDS, button.dataset.difficulty)) context.trainer.setDifficulty(button.dataset.difficulty);
       });
+      button.addEventListener("keydown", handleGroupKeydown);
+    }
+
+    for (const button of elements.patternButtons) {
+      button.addEventListener("click", () => setPatterns(button.dataset.patterns === "shown"));
       button.addEventListener("keydown", handleGroupKeydown);
     }
 

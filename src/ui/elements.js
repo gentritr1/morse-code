@@ -16,6 +16,7 @@ export function getElements() {
     modeButtons: all("[data-mode]"),
     themeButtons: all("[data-theme-choice]"),
     difficultyButtons: all("[data-difficulty]"),
+    patternButtons: all("[data-patterns]"),
     settingsButton: required("#settingsButton"),
     settingsPanel: required("#settingsPanel"),
     showGuide: required("#showGuide"),

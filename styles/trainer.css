@@ -294,6 +294,28 @@
   color: var(--theme-faint);
 }
 
+/*
+ * The drawer is not an answer key. A row whose pattern is still a secret shows
+ * three identical squares — always three, whatever the character — so the
+ * column cannot be read off during a round: not the shape, and not even how
+ * many marks are coming.
+ */
+.letter-pattern[data-masked="true"] {
+  --mark-h: 0.4375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.letter-pattern[data-masked="true"] i {
+  width: var(--mark-h);
+  height: var(--mark-h);
+  flex: 0 0 auto;
+  display: block;
+  background: var(--theme-faint);
+  opacity: 0.45;
+}
+
 .letters-list small {
   overflow: hidden;
   color: var(--theme-muted);
@@ -1101,6 +1123,7 @@
 }
 
 .typed-slot {
+  position: relative;
   display: inline-block;
   min-width: 1.25ch;
 }
@@ -1129,14 +1152,27 @@
   }
 }
 
-.cursor {
-  width: 0.625rem;
-  height: 2.5rem;
-  background: var(--theme-accent);
-  animation: cursor-blink 1.1s steps(1, end) infinite;
+/*
+ * The caret belongs to the slot that will receive the next letter, never to an
+ * element beside it: a standalone cursor made a one-letter round read as two
+ * positions. The slot keeps its width — the underscore is still there, just
+ * unpainted — so the bar sits exactly where the character will land.
+ */
+.typed-slot.caret {
+  color: transparent;
 }
 
-@keyframes cursor-blink {
+.typed-slot.caret::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0.06em;
+  bottom: 0.06em;
+  height: 0.11em;
+  background: var(--theme-accent);
+  animation: caret-blink 1.1s steps(1, end) infinite;
+}
+
+@keyframes caret-blink {
   50% {
     opacity: 0;
   }
