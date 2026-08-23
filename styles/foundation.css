@@ -316,6 +316,29 @@ button:disabled {
   text-transform: uppercase;
 }
 
+/* The group label and, when the speed was measured rather than picked, the link
+   back to the measurement that set it. */
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.settings-measure {
+  min-height: 2.75rem;
+  margin-block: calc(var(--space-2) * -1);
+  padding-inline: var(--space-2);
+  font-size: 0.75rem;
+}
+
+.settings-measured {
+  margin-top: calc(var(--space-1) * -1);
+  color: var(--shell-muted);
+  font-family: "DM Mono", "Courier New", monospace;
+  font-size: 0.6875rem;
+}
+
 .machine-picker {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

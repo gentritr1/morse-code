@@ -17,6 +17,7 @@ src/
 │   ├── events.js              Append-only attempt log and retention windows
 │   ├── guide.js               First-run guide dialog
 │   ├── performance-profile.js Pure retention scheduling and recognition
+│   ├── placement.js           Pure same-or-different placement trial
 │   ├── progress.js            Pure progression rules and the round policy
 │   ├── send.js                Paddle, transmission readout, and scoring
 │   ├── settings.js            Settings popover / sheet
@@ -33,6 +34,10 @@ src/
 `src/app.js` is the composition root. It creates one shared context, wires feature controllers, and owns the single top-level render function. Feature modules receive their dependencies instead of importing one another, which keeps the dependency direction explicit and prevents circular imports.
 
 **Progression is a pure module.** `src/features/progress.js` owns the whole learning path — the Koch teaching order, the lane order, the new-letter brake, and `pickRound({ profile, progress, events, history })`, the policy that decides what the next exercise is. It touches no DOM, no timers and no globals, so "the trainer chooses the exercise" is one function that can be reasoned about, changed, or tested on its own. `trainer.js` calls it and renders the result.
+
+**Placement is a pure module too.** `src/features/placement.js` owns the starting-speed measurement: `buildTrials(random)` lays out twelve same-or-different pairs — four at each preset, two same and two different, shuffled — and `placeFrom(log)` turns the answered log into `{ chosen, effOffset, acc, lat, replayed, trials }`. Accuracy picks the fastest character speed the learner could still tell apart; the median time to decide at that speed picks the spacing offset, floored so the effective speed can never fall below `MIN_EFFECTIVE_WPM`. It touches no DOM, no audio and no storage, so the rule that decides where a learner starts is one function that can be read on its own.
+
+The trial itself lives inside the guide dialog (`guide.js`), not on a page of its own: it is one more thing the second step can do, and it plays through the same audio boundary and the same overlap guard as everything else. Its only outputs are `morse-trainer-difficulty`, `progress.effOffset` and `progress.placement`. It never writes to the performance profile, the attempt log, the confusion maps, or any first-listen field — a measurement of hearing is not evidence of practice, and letting it into the scheduler would buy intervals nobody earned. A pair the learner was away for is replayed from the top on return and dropped from the log rather than counted either way.
 
 `pickRound` is **phase-driven**. A session is twenty rounds shaped in five parts — arrive (1–4), repair (5–8), new (9), mix (10–16), use (17–20) — declared once as `SESSION_PHASES` in `src/config.js` and read by both the policy and the rail in the header. The very first session runs on `SEED_SESSION_PHASES` instead: its opening run *is* the arrive phase, and repair only needs two rounds to contrast the pair it has just taught, so new material arrives at round 7 and the first sitting is the same twenty rounds as every one after it. Which table a sitting uses is decided once when it starts, because the seed run flips `progress.seeded` halfway through and the rail must not change shape underneath the learner. Inside each part the choice comes from **lanes, then score**. Lanes are checked before anything is scored, so a character the learner has actually forgotten never has to out-argue one that is merely new:
 

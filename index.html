@@ -232,7 +232,11 @@
       </div>
 
       <div class="settings-group">
-        <span class="settings-label" id="speedGroupLabel">Speed</span>
+        <div class="settings-head">
+          <span class="settings-label" id="speedGroupLabel">Speed</span>
+          <button class="text-button settings-measure" type="button" id="settingsMeasure">Measure</button>
+        </div>
+        <small class="settings-measured" id="settingsMeasured" hidden></small>
         <div class="segmented-control speed-segments" role="group" aria-labelledby="speedGroupLabel">
           <button type="button" data-difficulty="gentle" aria-pressed="false">
             <strong>Gentle</strong><small>18 wpm · wide gaps</small>
@@ -280,8 +284,14 @@
       </div>
 
       <div class="guide-step" data-guide-step="2" hidden>
+        <div class="rhythm-choose" id="rhythmChoose">
         <h2>Pick a rhythm</h2>
         <p class="guide-caption">Clear, but not slow enough to count.</p>
+        <p class="rhythm-result" id="measureResult" hidden></p>
+        <div class="rhythm-measure">
+          <button class="guide-next measure-cta" type="button" id="measureStart">Measure my rhythm</button>
+          <small class="guide-caption" id="measureCaption">Twelve pairs · about two minutes · no Morse needed</small>
+        </div>
         <div class="rhythm-cards" role="group" aria-label="Signal rhythm">
           <div class="rhythm-card">
             <button class="rhythm-select" type="button" data-guide-speed="gentle" aria-pressed="false">
@@ -302,6 +312,34 @@
             <button class="rhythm-hear" type="button" data-guide-hear="brisk">Hear it</button>
           </div>
         </div>
+        </div>
+
+        <div class="measure-panel" id="measurePanel" hidden>
+          <h2>Same, or different?</h2>
+          <p class="guide-caption">Two signals. Were they the same letter or two different ones?</p>
+          <span class="measure-marks" id="measureMarks" aria-hidden="true">
+            <i class="measure-group" data-signal="a"><span></span><span></span><span></span></i>
+            <i class="measure-group" data-signal="b"><span></span><span></span><span></span></i>
+          </span>
+          <button class="rhythm-hear measure-replay" type="button" id="measureReplay">Replay</button>
+          <div class="measure-answers">
+            <button class="measure-answer" type="button" id="measureSame" aria-disabled="true">Same</button>
+            <button class="measure-answer" type="button" id="measureDifferent" aria-disabled="true">Different</button>
+          </div>
+          <p class="measure-feedback" id="measureFeedback" aria-live="polite"></p>
+          <div
+            class="measure-progress"
+            id="measureProgress"
+            role="progressbar"
+            aria-label="Placement progress"
+            aria-valuemin="0"
+            aria-valuemax="12"
+            aria-valuenow="0"
+          >
+            <span id="measureBar"></span>
+          </div>
+        </div>
+
         <div class="guide-footer spread">
           <button class="guide-quiet" type="button" data-guide-back>Back</button>
           <button class="guide-next" type="button" data-guide-next>Next</button>

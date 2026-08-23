@@ -316,6 +316,144 @@
   color: var(--shell-text);
 }
 
+/*
+ * Placement lives in the same step as the cards, so measuring never feels like
+ * a detour: the card row is swapped for the trial and swapped back with the
+ * measured preset already selected.
+ */
+.rhythm-choose,
+.measure-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.rhythm-measure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.measure-cta.is-quiet {
+  border-color: var(--shell-border);
+  background: transparent;
+  color: var(--shell-muted);
+  font-weight: 600;
+}
+
+.rhythm-result {
+  margin: 0;
+  color: var(--shell-text);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.measure-marks {
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+}
+
+.measure-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.measure-group span {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  border-radius: 2px;
+  background: var(--shell-border);
+  opacity: 0.45;
+  transition:
+    opacity var(--motion-mark-out) var(--ease-out),
+    background-color var(--motion-mark-out) var(--ease-out),
+    box-shadow var(--motion-mark-out) var(--ease-out),
+    transform var(--motion-mark-out) var(--ease-out);
+}
+
+.measure-group[data-state="sounding"] span {
+  background: var(--shell-accent);
+  box-shadow: 0 0 0.75rem color-mix(in oklch, var(--shell-accent) 55%, transparent);
+  opacity: 1;
+  transform: scale(1.06);
+  transition:
+    opacity var(--motion-mark-in) linear,
+    background-color var(--motion-mark-in) linear,
+    box-shadow var(--motion-mark-in) linear,
+    transform var(--motion-mark-in) linear;
+}
+
+.measure-replay {
+  align-self: center;
+  min-width: 8rem;
+  border: 1px solid var(--shell-border);
+  border-top: 1px solid var(--shell-border);
+  border-radius: var(--radius-sm);
+}
+
+.measure-answers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.measure-answer {
+  min-height: 3.25rem;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--shell-border);
+  border-radius: var(--radius-md);
+  background: var(--shell-bg);
+  color: var(--shell-text);
+  font-size: 1rem;
+  font-weight: 700;
+  transition:
+    opacity var(--motion-reveal) var(--ease-out),
+    border-color var(--motion-ui) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out),
+    transform var(--motion-press) var(--ease-out);
+}
+
+.measure-answer:active {
+  transform: scale(0.97);
+}
+
+/* Shut until the last tone has gone: no answer can precede the signal. */
+.measure-answer[aria-disabled="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.measure-feedback {
+  min-height: 1.25rem;
+  margin: 0;
+  color: var(--shell-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.measure-progress {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--shell-border);
+}
+
+.measure-progress span {
+  height: 100%;
+  display: block;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--shell-accent);
+  transition: transform var(--motion-enter) var(--ease-out);
+}
+
 .guide-themes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -378,7 +516,7 @@
     padding-inline: var(--space-4);
   }
 
-  .rhythm-hear {
+  .rhythm-card .rhythm-hear {
     min-width: 5.5rem;
     border-top: 0;
     border-left: 1px solid var(--shell-border);
@@ -428,5 +566,15 @@
     color: var(--shell-text);
   }
 
+  .measure-answer:hover {
+    border-color: var(--shell-accent-deep);
+    background: var(--shell-surface-raised);
+  }
+
+  .measure-cta.is-quiet:hover {
+    border-color: var(--shell-muted);
+    background: transparent;
+    color: var(--shell-text);
+  }
 }
 }

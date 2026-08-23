@@ -14,6 +14,7 @@ import {
 } from "../config.js";
 import { wordsFrom } from "../data/words.js";
 import { cleanAccuracy, retentionWindows } from "./events.js";
+import { normalisePlacement } from "./placement.js";
 import {
   confForLetter,
   confusionKey,
@@ -54,7 +55,16 @@ function clampOffset(value) {
 }
 
 export function createProgress() {
-  return { unlocked: STARTING_UNLOCKED, newPaused: false, effOffset: 0, sessions: 0, seeded: false };
+  return {
+    unlocked: STARTING_UNLOCKED,
+    newPaused: false,
+    effOffset: 0,
+    sessions: 0,
+    seeded: false,
+    // No measurement yet: the trainer starts on the preset the guide offers
+    // until the learner runs the placement trial.
+    placement: null,
+  };
 }
 
 /**
@@ -103,6 +113,7 @@ export function readProgress(storage) {
     effOffset: clampOffset(stored.effOffset),
     sessions: Math.max(0, Math.floor(Number(stored.sessions)) || 0),
     seeded: Boolean(stored.seeded) || (Math.floor(Number(stored.sessions)) || 0) > 0,
+    placement: normalisePlacement(stored.placement),
   };
 }
 
@@ -113,6 +124,7 @@ export function writeProgress(storage, progress) {
     effOffset: clampOffset(progress.effOffset),
     sessions: Math.max(0, Math.floor(Number(progress.sessions)) || 0),
     seeded: Boolean(progress.seeded),
+    placement: normalisePlacement(progress.placement),
   });
 }
 

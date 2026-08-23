@@ -1,6 +1,7 @@
 import { SPEEDS, STORAGE_KEYS, THEMES } from "../config.js";
 import { writeEvents } from "./events.js";
 import { createEmptyPerformanceProfile } from "./performance-profile.js";
+import { measuredLabel } from "./placement.js";
 import { createProgress, writeProgress } from "./progress.js";
 
 /**
@@ -96,6 +97,11 @@ export function createSettingsController(context) {
     }
     elements.resetProgress.textContent = state.resetArmed ? "Confirm reset" : "Reset progress";
     elements.resetProgress.dataset.armed = String(state.resetArmed);
+    // A measured speed says where the preset came from, quietly. Nothing here
+    // is a number the learner has to act on.
+    const placement = state.progress.placement;
+    elements.settingsMeasured.hidden = !placement;
+    elements.settingsMeasured.textContent = placement ? measuredLabel(placement) : "";
   }
 
   function bind() {
@@ -139,6 +145,12 @@ export function createSettingsController(context) {
     elements.showGuide.addEventListener("click", () => {
       close();
       context.guide.open();
+    });
+    // The measurement lives in the guide; settings only points at it, so there
+    // is still one place where a rhythm is chosen.
+    elements.settingsMeasure.addEventListener("click", () => {
+      close();
+      context.guide.open({ step: 2, measure: true });
     });
     elements.resetProgress.addEventListener("click", resetProgress);
     window.addEventListener("resize", () => {
