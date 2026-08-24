@@ -1,6 +1,8 @@
 import { SPEEDS, STORAGE_KEYS } from "../config.js";
 import { MORSE } from "../data/morse.js";
-import { NIGHTS, ON_AIR_NAMES, OPS, WATCHES, WATCH_KEYS } from "../data/nights.js";
+import {
+  NIGHTS, ON_AIR_NAMES, OPEN_CORPUS, OPEN_FRAME, OPEN_KIND, OPS, WATCHES, WATCH_KEYS,
+} from "../data/nights.js";
 import { fistSchedule, speedTiming, stableHash } from "../platform/morse-audio.js";
 import { animateMarks, PLAYBACK_LEAD_MS, renderSignal } from "../ui/signals.js";
 import { classify, fitUnit, label, letterBaseline } from "./performance-profile.js";
@@ -48,6 +50,16 @@ const WINDOW_SPAN = 1.6;
 const TYPED_CAP = 64;
 /** A stuck paddle should not grow the readout forever. */
 const MAX_PRESSES = 64;
+/** A silent beat: the lamp is lit and nothing arrives, for this long. */
+const SILENT_MS = 4000;
+/** Then the note lands, and it is left up long enough to be read. */
+const SILENT_HOLD_MS = 2600;
+/** Open Channel is one call a day, and a day is a calendar day. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** The prompt a masked beat says once. */
+const MASK_PROMPT = "Part of it was never sent. Fill what you know.";
+/** What the station says when it chooses to send a masked line whole. */
+const UNMASK_LINE = "Once more. All of it this time.";
 
 const FAILURE_LINES = Object.freeze({
   window: "They stopped sending. Nothing was confirmed.",
@@ -97,7 +109,10 @@ function safeTime(value) {
 }
 
 export function createNightWatchStore() {
-  return { unlockSeen: false, onAir: "", nights: {}, stations: {}, beats: [] };
+  // `openAt` is the moment night 8 was confirmed — the Open Channel counts its
+  // days from there. `openHeard` is that day index plus one, so zero can mean
+  // "nothing heard yet" without a sentinel that survives a clamp.
+  return { unlockSeen: false, onAir: "", nights: {}, stations: {}, beats: [], openAt: 0, openHeard: 0 };
 }
 
 /**
@@ -112,6 +127,8 @@ export function readNightWatch(storage) {
 
   store.unlockSeen = Boolean(stored.unlockSeen);
   store.onAir = ON_AIR_NAMES.includes(stored.onAir) ? stored.onAir : "";
+  store.openAt = safeTime(stored.openAt);
+  store.openHeard = safeCount(stored.openHeard);
 
   if (stored.nights && typeof stored.nights === "object") {
     for (const night of NIGHTS) {
@@ -195,6 +212,117 @@ export function normalise(text) {
  * threshold is the design's own default.
  */
 export const COPY_TOLERANCE = 0.8;
+
+/** Midnight local time, because a day on this net is a calendar day. */
+export function dayStart(at) {
+  const date = new Date(at);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+/** Days since night 8 was confirmed. Zero on the night it was confirmed. */
+export function openDayIndex(openAt, now = Date.now()) {
+  if (!openAt) return 0;
+  return Math.max(0, Math.round((dayStart(now) - dayStart(openAt)) / DAY_MS));
+}
+
+/**
+ * What actually went out over the air: a masked word is silence of its own
+ * length, so it is not in the marks and must not be in the bars either.
+ */
+export function airText(text, mask = []) {
+  return normalise(text).split(" ").filter((_, index) => !mask.includes(index)).join(" ");
+}
+
+/**
+ * The hole, sized to the word that was never sent. It appears only once the
+ * learner has typed their way to it — before that there is nothing to mark,
+ * and afterwards it shrinks as they fill it. Without it the mechanic reads as
+ * a fault in the machine rather than as weather.
+ */
+export function maskSlot(typed, target, mask = []) {
+  if (!mask.length) return "";
+  const words = String(typed ?? "").toUpperCase().split(" ");
+  const at = words.length - 1;
+  if (!mask.includes(at)) return "";
+  const want = (normalise(target).split(" ")[at] ?? "").length;
+  const have = words[at].length;
+  return have >= want ? "" : "_".repeat(want - have);
+}
+
+/**
+ * Hand back exactly the words that were never sent, and nothing else. A learner
+ * who left the hole empty has one word fewer than the line; one who guessed and
+ * was wrong has the same count. Any other shape means the fault is not confined
+ * to the hole, and there is nothing here to adjudicate.
+ */
+function repaired(typed, target, mask) {
+  const want = normalise(target).split(" ").filter(Boolean);
+  const got = normalise(typed).split(" ").filter(Boolean);
+  const holes = [...mask].sort((a, b) => a - b);
+  if (got.length === want.length) {
+    for (const at of holes) got[at] = want[at];
+  } else if (got.length === want.length - holes.length) {
+    for (const at of holes) got.splice(at, 0, want[at]);
+  } else {
+    return null;
+  }
+  return got.join(" ");
+}
+
+/**
+ * Was the hidden word actually remembered? Not "close enough" — a masked word
+ * is the one thing in the mode that is not a copy at all, and a plausible guess
+ * that scored inside tolerance would turn Blackout from memory into luck.
+ */
+export function maskExact(typed, target, mask = []) {
+  if (!mask.length) return true;
+  const want = normalise(target).split(" ").filter(Boolean);
+  const got = normalise(typed).split(" ").filter(Boolean);
+  if (got.length !== want.length) return false;
+  return mask.every((at) => got[at] === want[at]);
+}
+
+/**
+ * The adjudication for a failed masked copy: if everything that was actually
+ * transmitted came through, the fault is in the guess and not in the ear, and
+ * the station will choose to send the line whole once.
+ */
+export function remainderPasses(typed, target, mask = []) {
+  if (!mask.length) return false;
+  const fixed = repaired(typed, target, mask);
+  if (fixed === null) return false;
+  return copyScore(fixed, target) >= COPY_TOLERANCE;
+}
+
+/**
+ * The Open Channel's daily pull, by index and nothing else: the same day is
+ * the same transmission, and a pairing recurs only far away from itself.
+ *
+ * The line advances on the kind's own turn rather than on the day, because a
+ * kind only comes round every fourth night: indexing a four-line pool by the
+ * day number would pin it to one line for ever.
+ */
+export function openPull(day, { confirmed = [] } = {}) {
+  const stations = Object.keys(OPS);
+  const from = stations[day % stations.length];
+  const kind = OPEN_KIND[day % OPEN_KIND.length];
+  const frame = OPEN_FRAME[kind][day % 2];
+  const turn = Math.floor(day / OPEN_KIND.length);
+  if (kind === "old" && confirmed.length) {
+    // A coprime stride scatters the recordings across the arc instead of
+    // replaying it front to back, while still reaching every confirmed line
+    // (7 shares no factor with any pool size the arc can produce except 7
+    // itself, and a stride of 1 walks a 7-line pool in full anyway).
+    const stride = confirmed.length % 7 === 0 ? 1 : 7;
+    const line = confirmed[(turn * stride) % confirmed.length];
+    // A recording keeps the hand that made it, and the weather it is heard in
+    // is the worst the net has.
+    return { from, kind, frame, text: line.text, fist: line.from, watch: 4, night: line.night };
+  }
+  const pool = OPEN_CORPUS[kind];
+  return { from, kind, frame, text: pool[turn % pool.length], fist: from, watch: kind === "old" ? 4 : 2, night: 0 };
+}
 
 export function copyScore(typed, target) {
   const a = normalise(typed);
@@ -305,7 +433,7 @@ export function createNightWatchController(context) {
   let store = createNightWatchStore();
   let timers = [];
   let cancelMarks = null;
-  /** locked · unlock · wait · brief · quiet · talk · rx · copy · choice · send · beatend · debrief · failed */
+  /** locked · unlock · wait · brief · open · talk · listen · rx · copy · choice · send · beatend · openend · debrief · failed */
   let phase = "locked";
   let nightIndex = 0;
   let beatIndex = 0;
@@ -329,6 +457,10 @@ export function createNightWatchController(context) {
   let sendMiss = 0;
   let sentAgain = false;
   let presses = [];
+  /** The Open Channel's beat for tonight, or null while a night is running. */
+  let openBeat = null;
+  /** True once the station has chosen to send a masked line whole. */
+  let unmasked = false;
   let pressStartedAt = 0;
   let pressPointerId = null;
   let padKeyboardHeld = false;
@@ -354,11 +486,13 @@ export function createNightWatchController(context) {
   }
 
   function beat() {
+    if (openBeat) return openBeat;
     const current = night();
     return current ? current.beats[beatIndex] ?? null : null;
   }
 
   function watch() {
+    if (openBeat) return WATCHES[openBeat.watch] ?? WATCHES[2];
     const current = night();
     return WATCHES[current ? current.watch : 1];
   }
@@ -395,8 +529,25 @@ export function createNightWatchController(context) {
 
   function gate(index = nightIndex, now = Date.now()) {
     const target = NIGHTS[index];
-    if (!target) return "quiet";
+    if (!target) return "open";
     return nightRecord(target.id).waitUntil > now ? "wait" : "brief";
+  }
+
+  /**
+   * Every Layer 1 line the learner has actually confirmed, with the hand that
+   * sent it. This is the Open Channel's `old` corpus: the arc becomes the pool,
+   * which is the only rule in the mode that scales without more authoring.
+   */
+  function confirmedLines() {
+    const lines = [];
+    for (const entry of NIGHTS) {
+      if (nightRecord(entry.id).status !== "confirmed") continue;
+      for (const item of entry.beats) {
+        if (!item.rx || item.cut || item.silent) continue;
+        lines.push({ text: item.rx, from: item.fistOverride ?? item.from, night: entry.id });
+      }
+    }
+    return lines;
   }
 
   /* ----------------------------------------------------------- rendering -- */
@@ -442,13 +593,15 @@ export function createNightWatchController(context) {
         action: "",
       };
     }
-    if (phase === "quiet") {
+    if (phase === "open") {
+      const day = openDayIndex(store.openAt);
       return {
-        tag: "Night Watch",
-        title: "The net is quiet.",
-        body: "Every night the coast has for you is confirmed. Nothing else is due on this frequency yet.",
-        note: "",
-        action: "",
+        tag: "Open Channel",
+        title: "The net is yours. One call a night.",
+        body: "Every night the coast had for you is confirmed. What is left is the traffic: one transmission "
+          + "a night, whoever is due, in their own hand. Nothing to confirm and nothing to lose.",
+        note: store.openHeard === day + 1 ? "Same one as tonight\u2019s round." : "",
+        action: "Open the channel",
       };
     }
     if (phase === "brief" && current) {
@@ -541,6 +694,30 @@ export function createNightWatchController(context) {
     elements.watchOptions.dataset.renderKey = key;
   }
 
+  /**
+   * The copy line, and the hole in it. A masked word is silence of exactly its
+   * own length on the air; on screen it is a slot of exactly its own length,
+   * shown once the learner has typed their way to it. Both are the same fact.
+   */
+  function renderDecode(copying) {
+    const current = beat();
+    const slot = copying && !unmasked && Array.isArray(current?.mask)
+      ? maskSlot(typed, resolve(current.rx), current.mask)
+      : "";
+    const text = copying ? (typed || (slot ? "" : "\u00b7")) : sendTarget;
+    const key = `${copying ? "rx" : "tx"}|${text}|${slot}`;
+    if (elements.watchDecodeText.dataset.renderKey === key) return;
+    const nodes = [document.createTextNode(text)];
+    if (slot) {
+      const hole = document.createElement("span");
+      hole.className = "watch-slot";
+      hole.textContent = slot;
+      nodes.push(hole);
+    }
+    elements.watchDecodeText.replaceChildren(...nodes);
+    elements.watchDecodeText.dataset.renderKey = key;
+  }
+
   function renderPresses() {
     const key = presses.map((press) => press.symbol).join("");
     if (elements.watchSequence.dataset.renderKey === key) return;
@@ -588,18 +765,22 @@ export function createNightWatchController(context) {
 
     const copying = phase === "copy";
     const keying = phase === "send";
-    elements.watchDecode.hidden = !(copying || keying);
-    elements.watchDecodeLabel.textContent = copying ? "Copy" : "Key";
-    elements.watchDecode.dataset.dir = copying ? "rx" : "tx";
-    elements.watchDecodeText.textContent = copying ? (typed || "·") : sendTarget;
+    const revealed = phase === "openend";
+    elements.watchDecode.hidden = !(copying || keying || revealed);
+    elements.watchDecodeLabel.textContent = copying ? "Copy" : revealed ? "Sent" : "Key";
+    elements.watchDecode.dataset.dir = keying ? "tx" : "rx";
+    renderDecode(copying);
     elements.watchPad.hidden = !keying;
     elements.watchSequence.hidden = !keying;
     elements.watchRepeat.hidden = !copying;
     elements.watchGap.hidden = !copying;
     elements.watchBack.hidden = !copying;
-    elements.watchConfirm.hidden = !(copying || keying || phase === "beatend");
-    elements.watchConfirm.textContent = copying ? "Send copy" : keying ? "That is my line" : "Continue";
-    elements.watchActions.hidden = !(copying || keying || phase === "beatend");
+    const acting = copying || keying || phase === "beatend" || revealed;
+    elements.watchConfirm.hidden = !acting;
+    elements.watchConfirm.textContent = copying
+      ? "Send copy"
+      : keying ? "That is my line" : revealed ? "Close down" : "Continue";
+    elements.watchActions.hidden = !acting;
 
     // The incoming signal is never shown as text, so the marks are the only
     // thing on screen while it plays — and they carry no shape until it does.
@@ -616,33 +797,33 @@ export function createNightWatchController(context) {
 
   function setLamp(next, decayMs = 0) {
     lamp = next;
-    elements.watchLamp.dataset.lamp = next;
+    const shell = elements.watchLamp;
+    const glow = shell.querySelector(".watch-lamp-glow");
+    shell.dataset.lamp = next;
+    // Pin the glow to whatever it is painting at this instant. A copy window
+    // leaves a half-finished thirty-second decay behind it, and setting the
+    // custom property to the value it is already decaying toward restarts
+    // nothing — the lamp would go on quietly fading long after the channel had
+    // closed, which is the one thing in this mode that must not lie.
+    shell.style.setProperty("--glow-ms", "0ms");
+    shell.style.setProperty("--glow", glow ? getComputedStyle(glow).opacity : "0");
+    void shell.offsetWidth;
     if (next === "open" && decayMs > 0) {
       // The only clock in the mode: a glow that runs out. No countdown anywhere.
-      elements.watchLamp.style.setProperty("--glow-ms", "0ms");
-      elements.watchLamp.style.setProperty("--glow", "1");
-      void elements.watchLamp.offsetWidth;
-      elements.watchLamp.style.setProperty("--glow-ms", `${Math.round(decayMs)}ms`);
-      elements.watchLamp.style.setProperty("--glow", "0");
+      shell.style.setProperty("--glow", "1");
+      void shell.offsetWidth;
+      shell.style.setProperty("--glow-ms", `${Math.round(decayMs)}ms`);
+      shell.style.setProperty("--glow", "0");
       return;
     }
-    elements.watchLamp.style.setProperty("--glow-ms", "240ms");
-    elements.watchLamp.style.setProperty("--glow", next === "rx" ? "1" : "0");
-  }
-
-  /**
-   * The beat behaviours nights 5 to 8 need are data here and nothing else. A
-   * night that reaches this has been added to the data ahead of the engine, and
-   * saying so loudly is better than playing it wrong.
-   */
-  function unsupported(current) {
-    const fields = ["mask", "cut", "fistOverride", "cue", "silent"].filter((field) => current[field] !== undefined);
-    return fields.length ? fields : null;
+    shell.style.setProperty("--glow-ms", "240ms");
+    shell.style.setProperty("--glow", next === "rx" ? "1" : "0");
   }
 
   function startNight(index) {
     nightIndex = index;
     beatIndex = 0;
+    openBeat = null;
     talk = [];
     transcript = [];
     beatLog = [];
@@ -661,16 +842,13 @@ export function createNightWatchController(context) {
       finishNight();
       return;
     }
-    const missing = unsupported(current);
-    if (missing) {
-      throw new Error(`Night Watch beat behaviour not implemented in this build: ${missing.join(", ")}`);
-    }
     assisted = false;
     interrupted = false;
     missCount = 0;
     wrongCount = 0;
     sendMiss = 0;
     sentAgain = false;
+    unmasked = false;
     typed = "";
     options = null;
     repeats = 0;
@@ -681,38 +859,87 @@ export function createNightWatchController(context) {
     refresh();
 
     const person = operator(current);
-    const lines = current.before ?? [];
+    // A cue beat has no transmission to react to, so the cue itself is the only
+    // Layer 2 line it gets — and it is the one place Layer 2 may name the line.
+    const lines = current.before ?? (current.cue ? [current.cue] : []);
     lines.forEach((line, index) => {
       later(() => say(`${person.who} · ${person.place}`, line), TALK_LEAD_MS + index * TALK_MS);
     });
-    later(() => playIncoming(false), 400 + lines.length * TALK_MS);
+    const after = 400 + lines.length * TALK_MS;
+
+    if (current.silent) {
+      later(() => holdSilence(current), after);
+      return;
+    }
+    // No incoming: the learner opens. First transmission of the arc they start.
+    if (!current.rx) {
+      later(() => beginSend(resolve(current.tx.t), true), after);
+      return;
+    }
+    later(() => playIncoming(false), after);
+  }
+
+  /**
+   * A beat where nothing arrives. The lamp stays lit on RX with an empty band
+   * under it, which is what listening to a station that has stopped actually
+   * looks like; the note is the content, and it lands late enough that the
+   * silence is felt first.
+   */
+  function holdSilence(current) {
+    phase = "listen";
+    setLamp("rx");
+    kicker = `LISTENING · ${current.from} · ${OPS[current.from]?.place ?? ""}`;
+    prompt = "Nothing yet.";
+    refresh();
+    later(() => {
+      setLamp("off");
+      kicker = "";
+      prompt = current.note;
+      pushTranscript(current.from, "no tone");
+      refresh();
+    }, SILENT_MS);
+    later(() => {
+      beatIndex += 1;
+      startBeat();
+    }, SILENT_MS + SILENT_HOLD_MS);
   }
 
   function playIncoming(isRepeat) {
     const current = beat();
     if (!current) return;
     const conditions = watch();
-    const person = operator(current);
+    // Whose hand this is need not be whose station it is. Night 6 turns on
+    // exactly that gap, so the fist and the seed follow the override and the
+    // Layer 2 attribution follows the station.
+    const hand = current.fistOverride ?? current.fist ?? current.from;
+    const person = OPS[hand] ?? operator(current);
     // A repeat is fainter: the same hand, a worse band.
     const band = isRepeat
       ? { ...conditions, noise: conditions.noise + 0.02, fade: Math.min(0.7, conditions.fade + 0.2) }
       : conditions;
     const text = resolve(current.rx);
+    // Once the station has chosen to send a masked line whole, there is no hole
+    // left in it — that is the whole of the concession.
+    const mask = unmasked ? [] : current.mask ?? [];
+    const voice = { fist: person.fist, watch: band, seed: hand, mask };
 
     phase = "rx";
     setLamp("rx");
-    kicker = `INCOMING · ${current.from} · ${OPS[current.from].place}`;
+    kicker = `INCOMING · ${current.from} · ${OPS[current.from]?.place ?? ""}`;
     prompt = isRepeat ? "Again, fainter." : conditions.name === "Fading Signal" ? "The band is moving." : "";
     refresh();
 
-    const marks = audio.playFist(text, speed(), { fist: person.fist, watch: band, seed: current.from });
-    const schedule = marks ?? fistSchedule(text, speed(), { fist: person.fist, watch: band, seed: current.from });
-    renderSignal(elements.watchSignal, text, false, false);
+    const marks = audio.playFist(text, speed(), voice);
+    const schedule = marks ?? fistSchedule(text, speed(), voice);
+    // The bars are what went out, not what was written: a masked word is not on
+    // the air, so it is not among the marks either.
+    renderSignal(elements.watchSignal, airText(text, mask), false, false);
     cancelMarks?.();
     cancelMarks = animateMarks([elements.watchSignal], schedule);
     const last = schedule[schedule.length - 1];
     const durationMs = last ? last.start + last.duration : 0;
-    later(() => openWindow(isRepeat), PLAYBACK_LEAD_MS + durationMs + 250);
+    // A cut transmission has no settle after it. The elements just end.
+    later(() => openWindow(isRepeat), PLAYBACK_LEAD_MS + durationMs + (current.cut ? 0 : 250));
   }
 
   /**
@@ -721,10 +948,20 @@ export function createNightWatchController(context) {
    */
   function openWindow(isRepeat = false) {
     const conditions = watch();
+    const current = beat();
     phase = "copy";
     windowMs = conditions.win;
-    prompt = "Copy it. Type the letters you heard.";
-    kicker = `COPY · ${beat()?.from ?? ""}`;
+    prompt = Array.isArray(current?.mask) && !unmasked ? MASK_PROMPT : "Copy it. Type the letters you heard.";
+    kicker = `COPY · ${current?.from ?? ""}`;
+    // The Open Channel is not a night: the lamp is a lamp, not a deadline, and
+    // there is nothing here to lose by taking as long as it takes.
+    if (openBeat) {
+      clearTimers();
+      setLamp("open", conditions.win);
+      refresh();
+      focusStage();
+      return;
+    }
     // A repeat is not a new window. The station gave the line again out of the
     // same closing window, so the glow picks up where it left off and the
     // deadline it is counting down to does not move.
@@ -779,7 +1016,30 @@ export function createNightWatchController(context) {
     if (!current) return;
     const target = resolve(current.rx);
     clearTimers();
-    if (copyScore(typed, target) < COPY_TOLERANCE) {
+    if (openBeat) {
+      revealOpen(target);
+      return;
+    }
+    // Once the station has sent the line whole there is nothing hidden left to
+    // get right, and the copy is judged like any other.
+    const mask = unmasked ? [] : (Array.isArray(current.mask) ? current.mask : []);
+    // Two ways to not have it: the copy missed, or the word in the hole is not
+    // the word that was never sent. Both are the same answer from the station.
+    if (copyScore(typed, target) < COPY_TOLERANCE || !maskExact(typed, target, mask)) {
+      // The Blackout concession: if everything that was actually transmitted
+      // came through and only the guess was wrong, the station is not being
+      // asked to repeat itself — it is choosing to stop hiding a word.
+      if (mask.length && remainderPasses(typed, target, mask)) {
+        unmasked = true;
+        assisted = true;
+        typed = "";
+        const person = operator(current);
+        say(`${person.who} · ${person.place}`, UNMASK_LINE);
+        prompt = "";
+        refresh();
+        later(() => playIncoming(true), 1100);
+        return;
+      }
       missCount += 1;
       if (missCount >= 2) {
         failNight("copy");
@@ -793,8 +1053,11 @@ export function createNightWatchController(context) {
       return;
     }
 
-    const quality = interrupted ? "not counted" : assisted ? "with help" : "unaided";
-    beatLog.push({ dir: "rx", quality, band: null, again: false, context: 0 });
+    // A word filled from context was never heard, so it is never unaided, and
+    // the debrief counts the letters rather than rounding them into the line.
+    const filled = mask.reduce((total, at) => total + (normalise(target).split(" ")[at] ?? "").length, 0);
+    const quality = interrupted ? "not counted" : (assisted || filled) ? "with help" : "unaided";
+    beatLog.push({ dir: "rx", quality, band: null, again: false, context: filled });
     pushTranscript(current.from, target);
     stopSignal();
     setLamp("off");
@@ -828,7 +1091,7 @@ export function createNightWatchController(context) {
     beginSend(resolve(option.t));
   }
 
-  function beginSend(target) {
+  function beginSend(target, opening = false) {
     presses = [];
     lastUpAt = null;
     pressStartedAt = 0;
@@ -836,8 +1099,10 @@ export function createNightWatchController(context) {
     phase = "send";
     sendTarget = target;
     options = null;
-    kicker = "KEY IT BACK";
-    prompt = "Key it on the paddle. Choosing is the judgement; keying is the skill.";
+    kicker = opening ? "OPEN THE CALL" : "KEY IT BACK";
+    prompt = opening
+      ? "Nothing is coming. Call her yourself."
+      : "Key it on the paddle. Choosing is the judgement; keying is the skill.";
     setLamp("off");
     refresh();
     // The render above is synchronous, so the paddle exists now: focusing it on
@@ -903,16 +1168,99 @@ export function createNightWatchController(context) {
     refresh();
   }
 
+  /**
+   * One call a night, and the same call twice in one night. Everything about
+   * tonight's transmission comes out of the day index, so a second visit is not
+   * a second pull — it is the same one, and the card says so.
+   */
+  function startOpen() {
+    clearTimers();
+    stopSignal();
+    const day = openDayIndex(store.openAt);
+    const pull = openPull(day, { confirmed: confirmedLines() });
+    const person = OPS[pull.from];
+    openBeat = {
+      from: pull.from,
+      rx: pull.text,
+      fist: pull.fist,
+      watch: pull.watch,
+      kind: pull.kind,
+      night: pull.night,
+      tx: { k: "free", t: "R" },
+    };
+    talk = [];
+    transcript = [];
+    beatLog = [];
+    debrief = [];
+    card = null;
+    typed = "";
+    options = null;
+    unmasked = false;
+    assisted = false;
+    interrupted = false;
+    missCount = 0;
+    repeats = 0;
+    phase = "talk";
+    prompt = "";
+    kicker = "";
+    setLamp("off");
+    refresh();
+    later(() => say(`${person.who} · ${person.place}`, pull.frame), TALK_LEAD_MS);
+    if (store.openHeard === day + 1) {
+      later(() => say(`${person.who} · ${person.place}`, "Same one as tonight\u2019s round."), TALK_LEAD_MS + TALK_MS);
+    }
+    later(() => playIncoming(false), 400 + (store.openHeard === day + 1 ? 2 : 1) * TALK_MS);
+  }
+
+  /**
+   * There is no failing an Open Channel line: sending the copy is what reveals
+   * it. Nothing about it is written down anywhere except the day it was heard,
+   * because a transmission with nothing at stake cannot be evidence.
+   */
+  function revealOpen(target) {
+    clearTimers();
+    stopSignal();
+    setLamp("off");
+    const day = openDayIndex(store.openAt);
+    store.openHeard = day + 1;
+    persist();
+    pushTranscript(openBeat.from, target);
+    sendTarget = target;
+    typed = "";
+    phase = "openend";
+    kicker = "";
+    prompt = "That was all of it. Nothing to confirm, nothing to lose.";
+    refresh();
+  }
+
   function advance() {
     if (phase === "beatend") {
       beatIndex += 1;
       startBeat();
       return;
     }
+    if (phase === "open") {
+      startOpen();
+      return;
+    }
+    if (phase === "openend") {
+      openBeat = null;
+      clearTimers();
+      stopSignal();
+      talk = [];
+      transcript = [];
+      phase = "open";
+      prompt = "";
+      kicker = "";
+      setLamp("off");
+      refresh();
+      return;
+    }
     if (phase === "debrief" || phase === "failed") {
       clearTimers();
       talk = [];
       transcript = [];
+      openBeat = null;
       nightIndex = firstUnconfirmed();
       phase = gate(nightIndex);
       refresh();
@@ -951,6 +1299,8 @@ export function createNightWatchController(context) {
     store.nights[String(current.id)] = { status: "confirmed", waitUntil: 0, at: now };
     store.beats = beatLog.slice(-32);
     recordStation(current.station, true, now);
+    // The last night confirmed is where the Open Channel starts counting days.
+    if (firstUnconfirmed() >= NIGHTS.length && !store.openAt) store.openAt = now;
     persist();
     phase = "debrief";
     setLamp("off");
@@ -1007,7 +1357,7 @@ export function createNightWatchController(context) {
 
   function markInterrupted() {
     if (state.mode !== "watch") return;
-    if (["talk", "rx", "copy", "choice", "send"].includes(phase)) interrupted = true;
+    if (["talk", "rx", "copy", "choice", "send", "listen"].includes(phase)) interrupted = true;
   }
 
   function pause() {
@@ -1036,6 +1386,8 @@ export function createNightWatchController(context) {
     typed = "";
     options = null;
     presses = [];
+    openBeat = null;
+    unmasked = false;
     if (!unlocked()) {
       phase = "locked";
       refresh();
@@ -1054,6 +1406,7 @@ export function createNightWatchController(context) {
     clearTimers();
     stopSignal();
     finishPress(true);
+    openBeat = null;
   }
 
   function bind() {

@@ -196,6 +196,18 @@
   color: var(--theme-accent);
 }
 
+/*
+ * The hole in a Blackout line. It is the same fact as the silence on the air —
+ * a word of exactly this length was never sent — so it is sized to the word and
+ * it shrinks as the learner fills it. Dimmer than what was heard, because it is
+ * the one part of the line nobody transmitted.
+ */
+.watch-slot {
+  color: var(--theme-muted);
+  opacity: 0.75;
+  letter-spacing: 0.08em;
+}
+
 .watch-options {
   width: 100%;
   display: flex;
@@ -338,6 +350,34 @@
   background: color-mix(in oklab, var(--theme-faint) 55%, transparent);
 }
 
+/*
+ * `*` is a mark that is still being sent to nobody: the buoy's call, marching
+ * off the right edge. It is the one animated ink, staggered by its own column,
+ * and it holds still for anyone who has asked motion to stop.
+ */
+.watch-mosaic i[data-ink="*"] {
+  background: var(--theme-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .watch-mosaic i[data-ink="*"] {
+    animation: watch-march 4s steps(1, end) infinite;
+    animation-delay: calc(var(--column) * -0.5s);
+  }
+}
+
+@keyframes watch-march {
+  0%,
+  25% {
+    opacity: 1;
+  }
+
+  26%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
 .watch-memory-line {
   max-width: 34ch;
   margin: 0;
@@ -386,6 +426,10 @@ body[data-theme="pocket"] .watch-mosaic i[data-ink="x"] {
   background: color-mix(in oklch, var(--lcd-ink) 18%, var(--lcd-bg));
 }
 
+body[data-theme="pocket"] .watch-mosaic i[data-ink="*"] {
+  background: var(--lcd-ink);
+}
+
 @media (hover: hover) and (pointer: fine) {
   .watch-option:hover {
     background: color-mix(in oklab, var(--theme-accent) 18%, var(--theme-surface));
@@ -404,5 +448,6 @@ body[data-theme="pocket"] .watch-mosaic i[data-ink="x"] {
   .watch-transcript p {
     font-size: 0.625rem;
   }
+
 }
 }

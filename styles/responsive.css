@@ -251,6 +251,49 @@
     font-size: 2.75rem;
   }
 
+  /*
+   * A Blackout copy line carries its own hole, and at this width the words and
+   * the slot have to sit on one row: a hole wrapped onto a line of its own
+   * reads as two lines rather than as one line with something missing from it.
+   */
+  .watch-decode strong {
+    font-size: 2rem;
+  }
+
+  /*
+   * Night Watch stacks more onto the stage than any other mode — three lines of
+   * Layer 2, the lamp, the copy line, four actions and the transcript — and at
+   * phone width that stack is the difference between one screen and a scroll.
+   * The trim is spread across the column rather than taken out of one piece:
+   * a little off the stack gaps, a step off the Layer 2 lines, and the action
+   * row closed up — the copy line, the lamp and the 44 px targets untouched.
+   */
+  .watch-view {
+    gap: var(--space-2);
+  }
+
+  .watch-talk p {
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .watch-actions {
+    gap: var(--space-1);
+  }
+
+  .watch-transcript {
+    padding-block-start: var(--space-1);
+  }
+
+  /*
+   * The pocket unit frames Night Watch in glass, and the glass has a generous
+   * inset. At phone width a beat needs those few millimetres more than the
+   * bezel does; the panel, its border and its ink are otherwise untouched.
+   */
+  body[data-theme="pocket"] .watch-live {
+    padding: var(--space-3);
+  }
+
   .send-pad {
     min-height: 6rem;
   }
@@ -288,6 +331,10 @@
 
   body[data-theme="teletext"] .decode-line strong {
     font-size: 3.5rem;
+  }
+
+  body[data-theme="teletext"] .watch-decode strong {
+    font-size: 2.25rem;
   }
 
   body[data-theme="pocket"] .machine {

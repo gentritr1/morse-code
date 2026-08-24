@@ -8,9 +8,10 @@
  * but never carry the message before the Morse does. `auditNights` is what makes
  * both of those rules facts rather than intentions.
  *
- * The beat format is the whole format, including the fields nights 5–8 need
- * (`mask`, `cut`, `fistOverride`, `cue`, `silent`). Only nights 1–4 ship here;
- * the later nights are data, not code, and drop into this file unchanged.
+ * The beat format is the whole format: `mask` hides a word from the air,
+ * `cut` ends a transmission mid-word, `fistOverride` puts the line in another
+ * station’s hand, `cue` is a beat the learner opens, `silent` is a beat where
+ * nothing arrives and that is the content.
  */
 
 /** The only characters any Layer 1 string may contain, besides the word space. */
@@ -95,9 +96,9 @@ export const OPS = Object.freeze({
 });
 
 /**
- * Radio conditions, not difficulty labels: each Watch adds one axis. Watches 3
- * and 4 are defined because the nights that use them are authored against these
- * numbers; nothing in this pass reaches them.
+ * Radio conditions, not difficulty labels: each Watch adds one axis — noise,
+ * then fade and dropout, then speed and the loss of a free repeat, then the
+ * masking that makes Blackout what it is.
  */
 export const WATCHES = Object.freeze({
   1: { name: "Clear Channel", noise: 0.015, fade: 0, drop: 0, expr: 0.6, autoRepeat: true, repeats: 2, speed: 0, win: 42000 },
@@ -117,6 +118,10 @@ export const ART = Object.freeze({
   log: "  +-------------+\n  | IRENE  NOON |\n  +-------------+\n     |     |\n  ---+-----+---",
   ground: "      /  x  \\\n     /       \\\n  --o    .    o--\n     \\_______/\n       SEA MOOR",
   peak: "        /\\\n       /  \\ .\n      /    \\\n   __/      \\__\n    .  .  .   .",
+  relay: "  o----------o\n   \\        /\n    \\      /\n     \\    /\n      [ X ]",
+  buoy: "   |\n  (o)   . . . . .\n ~~|~~~~~~~~~~~~~\n  /_\\",
+  cut: "  . _ . - . . _ . - |\n                    |\n  ------------------+\n  .  -  -",
+  net: "  o     o     o\n     \\  |  /\n      \\ | /\n   o---[*]---o",
 });
 
 export const GRIDS = Object.freeze({
@@ -155,6 +160,46 @@ export const GRIDS = Object.freeze({
     "..#########..",
     ".###########.",
     "-------------",
+  ]),
+  // Three stations in a chain, the accent running through the one in the middle.
+  relay: Object.freeze([
+    "##.........##",
+    ".oo.......oo.",
+    "...o.....o...",
+    "....o...o....",
+    ".....ooo.....",
+    ".....###.....",
+    ".....###.....",
+  ]),
+  // The buoy, and the call it keeps sending marching off the edge. `*` marches.
+  buoy: Object.freeze([
+    "...#.........",
+    "...#.........",
+    "..###........",
+    "..###.*.*.*.*",
+    "..###........",
+    "-------------",
+    "..---.---.---",
+  ]),
+  // A trace that meets a rule and stops; a flat line where the signal was.
+  cut: Object.freeze([
+    ".........#...",
+    ".o...o...#...",
+    ".o.o.o.o.#...",
+    "oo.o.o.oo#---",
+    ".o.o.o.o.#...",
+    ".o...o...#...",
+    ".........#...",
+  ]),
+  // Six stations around one that is awake.
+  net: Object.freeze([
+    "..##.....##..",
+    "...o.....o...",
+    "....o.o.o....",
+    "##..o###o..##",
+    "....o.o.o....",
+    "...o.....o...",
+    "..##.....##..",
   ]),
 });
 
@@ -291,9 +336,218 @@ export const NIGHTS = Object.freeze([
         rx: "IS SEAMARK ON K",
         tx: { k: "pick", o: [{ t: "SEAMARK IS ON", ok: true }, { t: "SEAMARK SENT NO TONE" }, { t: "ASK MARKER" }] },
       },
+      // The ear night 6 asks for, taught here first: the same words, in someone
+      // else's hand, and the question is whose hand rather than what it said.
+      {
+        from: "STONE",
+        before: ["Someone answers her. Not me \u2014 listen to the hand, then say whose."],
+        rx: "SEAMARK IS ON K",
+        fistOverride: "STONE",
+        tx: {
+          k: "pick",
+          o: [{ t: "STONE K", ok: true }, { t: "SEAMARK K" }, { t: "AS" }],
+          wrong: "Not that hand. The dashes ran short and quick.",
+          right: "Wren, relaying. You will need that ear soon.",
+        },
+      },
+    ],
+  },
+  {
+    id: 5,
+    watch: 3,
+    station: "STONE",
+    title: "Between two stations",
+    cond: "Deep night. Ridge Relay cannot raise Long Point.",
+    card: { art: ART.relay, grid: GRIDS.relay, line: "Ridge Relay reached Long Point through you." },
+    close: "Wren never had to reach that far.",
+    beats: [
+      {
+        from: "STONE",
+        before: ["Fast, sorry. I key the way I talk."],
+        rx: "{C} STONE K",
+        tx: { k: "free", t: "R" },
+      },
+      {
+        from: "STONE",
+        before: ["Long Point is deaf to me tonight. You sit between us."],
+        rx: "TRANSMIT TO STRAIT K",
+        tx: { k: "free", t: "R" },
+      },
+      {
+        from: "STONE",
+        before: ["Here it is. I will not send it twice."],
+        rx: "MEET AT MINES AT NOON",
+        tx: { k: "free", t: "MEET AT MINES AT NOON" },
+      },
+      // Nothing comes in. The learner opens the exchange for the first time.
+      {
+        from: "STONE",
+        cue: "Now call her. She answers strangers slowly.",
+        tx: { k: "free", t: "STRAIT {C} K" },
+      },
+      {
+        from: "STRAIT",
+        before: ["Go on then."],
+        rx: "R IRENE MINES NOON TKS SK",
+        tx: { k: "free", t: "SK" },
+      },
+    ],
+  },
+  {
+    id: 6,
+    watch: 3,
+    station: "MARKER",
+    title: "A hand you know",
+    cond: "Ridge Relay due on the hour. North Buoy quiet.",
+    card: { art: ART.buoy, grid: GRIDS.buoy, line: "The buoy was keying an old call to no one." },
+    close: "North Buoy is a machine again. Someone will have to go out to it.",
+    beats: [
+      {
+        from: "SEAMARK",
+        before: ["Ridge is due on the hour.", "You have heard him key enough times by now."],
+        rx: "{C} STONE K",
+        fistOverride: "MARKER",
+        tx: {
+          k: "pick",
+          o: [{ t: "MARKER K", ok: true }, { t: "STONE K" }, { t: "AS" }],
+          wrong: "That was not his hand. Listen to it again.",
+          right: "The buoy has been keying Ridge\u2019s old call. Pike must have left the keyer running.",
+        },
+      },
+      {
+        from: "MARKER",
+        before: ["Nothing on the ridge frequency. Only this."],
+        rx: "TEST TEST K",
+        tx: { k: "free", t: "MARKER R" },
+      },
+      {
+        from: "SEAMARK",
+        before: ["Pike went down the ladder at moonset and did not come back up."],
+        rx: "NO MAN AT MARKER K",
+        tx: { k: "pick", o: [{ t: "R NO MAN AT MARKER", ok: true }, { t: "MARKER IS ON" }, { t: "AS" }] },
+      },
+    ],
+  },
+  {
+    id: 7,
+    watch: 4,
+    station: "STONE",
+    title: "Mid word",
+    cond: "Blackout. Ridge Relay keys through the storm.",
+    card: { art: ART.cut, grid: GRIDS.cut, line: "Ridge Relay stopped mid word." },
+    close: "The net is yours at moonset.",
+    beats: [
+      {
+        from: "STONE",
+        before: ["Storm on the ridge. If I stop, it is the aerial, not me."],
+        rx: "{C} STONE K",
+        tx: { k: "free", t: "R" },
+      },
+      {
+        from: "STONE",
+        before: ["Where I am, in case you are asked."],
+        rx: "MEN AT STONE STATION",
+        mask: [2],
+        tx: { k: "free", t: "R AS" },
+      },
+      // The elements simply end. What was sent is what is compared against.
+      {
+        from: "STONE",
+        before: ["One more and then I have to see to the mast."],
+        rx: "TAKE NET ASK SEAMA",
+        cut: true,
+        tx: { k: "pick", o: [{ t: "STONE {C} K", ok: true }, { t: "R SK" }, { t: "ASK MARKER" }] },
+      },
+      { from: "STONE", silent: true, note: "Ridge Relay does not answer." },
+      {
+        from: "SEAMARK",
+        before: ["I heard him cut. Storm took the ridge, or the ridge took him."],
+        rx: "NO TONE ON STONE NET AT MOONSET",
+        mask: [4],
+        tx: { k: "pick", o: [{ t: "R {C} TAKES NET", ok: true }, { t: "NO" }, { t: "ASK STONE" }] },
+      },
+    ],
+  },
+  {
+    id: 8,
+    watch: 4,
+    station: "SEAMARK",
+    title: "All stations",
+    cond: "All stations. Two are weak. One is a machine.",
+    card: { art: ART.net, grid: GRIDS.net, line: "Six stations, one operator awake." },
+    close: "Every station that could answer, answered.",
+    beats: [
+      {
+        from: "SEAMARK",
+        before: ["Everyone still keying comes up tonight.", "Whatever they send you, answer it."],
+        rx: "{C} IS NET K",
+        tx: { k: "free", t: "R" },
+      },
+      {
+        from: "ROTOR",
+        before: ["Mill Station, on the hour."],
+        rx: "MEET AT NOON K",
+        mask: [2],
+        tx: { k: "free", t: "R NOON" },
+      },
+      {
+        from: "SMOKE",
+        before: ["The hut, weaker than last time."],
+        rx: "NAME IS OMAR K",
+        mask: [2],
+        tx: { k: "free", t: "OMAR R" },
+      },
+      {
+        from: "STRAIT",
+        before: ["Long Point, reading from her log."],
+        rx: "IRENE AT MOORS K",
+        mask: [2],
+        tx: { k: "pick", o: [{ t: "R IRENE AT MOORS", ok: true }, { t: "R IRENE AT MINES" }, { t: "AS" }] },
+      },
+      {
+        from: "MARKER",
+        before: ["And the buoy, still running."],
+        rx: "TEST TEST K",
+        tx: { k: "free", t: "R" },
+      },
+      {
+        from: "SEAMARK",
+        before: ["That is all of us. Some of us."],
+        rx: "NET IS ON {C} TKS SK",
+        tx: { k: "free", t: "SK" },
+      },
     ],
   },
 ]);
+
+/**
+ * Open Channel: after night 8 the net does not stop, it just stops needing
+ * anything. One transmission a day, rotated by index so the same pairing
+ * recurs far apart, and nothing in it is evidence.
+ */
+export const OPEN_KIND = Object.freeze(["weather", "lost", "note", "old"]);
+
+export const OPEN_CORPUS = Object.freeze({
+  weather: Object.freeze([
+    "MIST AT SEA AT MOONRISE", "RAIN ON MOORS AT NOON", "STORM AT SEA",
+    "NO MIST AT MARKER", "MIST ON EAST MOOR AT NINE",
+  ]),
+  lost: Object.freeze([
+    "IS ANTON ON K", "ANTON ANTON STRAIT K", "IS IRENE AT MINES K", "TO NOOR NO ROOM AT SMOKE",
+  ]),
+  note: Object.freeze([
+    "MET IRENE AT MINES", "OMAR IS AT REST", "TKS {C} SK", "SEA IS OK TONE IS OK",
+  ]),
+  // The fallback only. The real `old` pool is the learner's own confirmed lines.
+  old: Object.freeze(["MONITOR AT MOONRISE K", "MEET AT MINES AT NOON", "NO TONE ON STONE"]),
+});
+
+export const OPEN_FRAME = Object.freeze({
+  weather: Object.freeze(["Weather round, same as every night.", "Nothing in it. That is the point of it."]),
+  lost: Object.freeze(["Someone calling a station that is not answering.", "Not for you. You hear it anyway."]),
+  note: Object.freeze(["Off-schedule. Personal, by the sound of it.", "They know the net is listening. They send it anyway."]),
+  old: Object.freeze(["Something is repeating on the buoy\u2019s frequency.", "An old one. Nobody is at that key."]),
+});
 
 /**
  * On air the learner needs a name that can actually be keyed. The Cabin's
@@ -324,9 +578,10 @@ function legal(text) {
  * transmission shares a content word with it. Both are counted rather than
  * asserted, so the answer is a number and the number can be zero.
  */
-export function auditNights(nights = NIGHTS) {
+export function auditNights(nights = NIGHTS, pools = OPEN_CORPUS) {
   const badLetters = [];
   const leaks = [];
+  const shapes = [];
   let strings = 0;
 
   const check = (text, where) => {
@@ -340,9 +595,19 @@ export function auditNights(nights = NIGHTS) {
       if (beat.rx) check(beat.rx, `${where} rx`);
       if (beat.tx?.k === "free") check(beat.tx.t, `${where} tx`);
       if (beat.tx?.k === "pick") for (const option of beat.tx.o) check(option.t, `${where} option`);
-      if (!beat.rx || !beat.before) continue;
+      // A masked word has to exist to be masked, and a silent beat has to have
+      // the note that is its whole content.
+      if (Array.isArray(beat.mask)) {
+        const words = String(beat.rx ?? "").split(/\s+/).filter(Boolean);
+        for (const at of beat.mask) if (!words[at]) shapes.push(`${where}: mask ${at} has no word`);
+      }
+      if (beat.silent && !beat.note) shapes.push(`${where}: silent beat with no note`);
+      if (!beat.rx && !beat.silent && !beat.cue) shapes.push(`${where}: no rx, no cue, not silent`);
+      // The line before a `cue` beat is the cue itself, and it is the one place
+      // Layer 2 is allowed to name what the learner is about to key.
+      const spoken = (beat.before ?? []).join(" ").toUpperCase();
+      if (!beat.rx || !spoken) continue;
 
-      const spoken = beat.before.join(" ").toUpperCase();
       const words = String(beat.rx).replace(/\{C\}/g, "").split(/\s+/).filter(Boolean);
       for (const word of words) {
         if (STOP_WORDS.has(word) || word.length <= 2) continue;
@@ -351,5 +616,18 @@ export function auditNights(nights = NIGHTS) {
     }
   }
 
-  return { strings, badLetters, leaks };
+  for (const [kind, pool] of Object.entries(pools ?? {})) {
+    for (const line of pool) check(line, `open ${kind}`);
+  }
+
+  // The mosaic is a picture only while every row is the same length.
+  for (const [key, rows] of Object.entries(GRIDS)) {
+    const width = rows[0].length;
+    for (const [row, line] of rows.entries()) {
+      if (line.length !== width) shapes.push(`grid ${key} row ${row}: ${line.length} of ${width}`);
+      if (/[^#o\-x.*]/.test(line)) shapes.push(`grid ${key} row ${row}: unknown ink`);
+    }
+  }
+
+  return { strings, badLetters, leaks, shapes };
 }
